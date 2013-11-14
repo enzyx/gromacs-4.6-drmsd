@@ -75,7 +75,7 @@
 static const char *tpx_tag = TPX_TAG_RELEASE;
 
 /* This number should be increased whenever the file format changes! */
-static const int tpx_version = 83;
+static const int tpx_version = 84;
 
 /* This number should only be increased when you edit the TOPOLOGY section
  * or the HEADER of the tpx format.
@@ -165,6 +165,7 @@ static const t_ftupd ftupd[] = {
     { 22, F_DISRESVIOL        },
     { 22, F_ORIRES            },
     { 22, F_ORIRESDEV         },
+    { 84, F_DRMSDP            },
     { 26, F_DIHRES            },
     { 26, F_DIHRESVIOL        },
     { 49, F_VSITE4FDN         },
@@ -1196,6 +1197,15 @@ static void do_inputrec(t_fileio *fio, t_inputrec *ir, gmx_bool bRead,
         ir->orires_tau  = 0;
         ir->nstorireout = 0;
     }
+
+    if (file_version >= 84)
+    {
+        gmx_fio_do_gmx_bool(fio, ir->bDrmsdPot);
+        gmx_fio_do_real(fio, ir->drmsd_ref);
+        gmx_fio_do_real(fio, ir->drmsd_fc);
+        gmx_fio_do_int(fio, ir->nstdrmsdpout);
+    }
+
     if (file_version >= 26 && file_version < 79)
     {
         gmx_fio_do_real(fio, ir->dihre_fc);

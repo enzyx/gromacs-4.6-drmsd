@@ -371,6 +371,10 @@ typedef struct {
     real            orires_fc;            /* force constant for orientational restraints  */
     real            orires_tau;           /* time constant for memory function in orires    */
     int             nstorireout;          /* frequency of writing tr(SD) to enx           */
+    gmx_bool        bDrmsdPot;            /* Enable the distance based RMSD potential    */
+    real            drmsd_ref;            /* Reference distance drmsd */
+    real            drmsd_fc;             /* Force constant for distance RMSD potential */
+    int             nstdrmsdpout;         /* Frequency of writing dRMSD potential to output file */
     real            dihre_fc;             /* force constant for dihedral restraints (obsolete)	*/
     real            em_stepsize;          /* The stepsize for updating			*/
     real            em_tol;               /* The tolerance				*/

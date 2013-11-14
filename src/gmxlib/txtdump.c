@@ -886,6 +886,12 @@ void pr_inputrec(FILE *fp, int indent, const char *title, t_inputrec *ir,
         PR("orires-tau", ir->orires_tau);
         PR("nstorireout", ir->nstorireout);
 
+        PS("drmsd-pot", EBOOL(ir->bDrmsdPot));
+        PR("drmsd-ref", ir->drmsd_ref);
+        PR("drmsd-k0", ir->drmsd_fc);
+        PR("nstdrmsdpout", ir->nstdrmsdpout);
+
+
         PR("dihre-fc", ir->dihre_fc);
 
         PR("em-stepsize", ir->em_stepsize);

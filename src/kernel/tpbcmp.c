@@ -859,6 +859,10 @@ static void cmp_inputrec(FILE *fp, t_inputrec *ir1, t_inputrec *ir2, real ftol, 
     cmp_real(fp, "inputrec->orires_fc", -1, ir1->orires_fc, ir2->orires_fc, ftol, abstol);
     cmp_real(fp, "inputrec->orires_tau", -1, ir1->orires_tau, ir2->orires_tau, ftol, abstol);
     cmp_int(fp, "inputrec->nstorireout", -1, ir1->nstorireout, ir2->nstorireout);
+    cmp_int(fp, "inputrec->bDrmsdPot", -1, ir1->bDrmsdPot, ir2->bDrmsdPot);
+    cmp_real(fp, "inputrec->drmsd_ref", -1, ir1->drmsd_ref, ir2->drmsd_ref, ftol, abstol);
+    cmp_real(fp, "inputrec->drmsd_fc", -1, ir1->drmsd_fc, ir2->drmsd_fc, ftol, abstol);
+    cmp_int(fp, "inputrec->nstdrmsdpout", -1, ir1->nstdrmsdpout, ir2->nstdrmsdpout);
     cmp_real(fp, "inputrec->dihre_fc", -1, ir1->dihre_fc, ir2->dihre_fc, ftol, abstol);
     cmp_real(fp, "inputrec->em_stepsize", -1, ir1->em_stepsize, ir2->em_stepsize, ftol, abstol);
     cmp_real(fp, "inputrec->em_tol", -1, ir1->em_tol, ir2->em_tol, ftol, abstol);

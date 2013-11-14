@@ -52,6 +52,14 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
     /* Get pointer to drmsdpotdata structure */
     dd = &(fcd->drmsdp);
 
+    /* START DEBUGING */
+    fprintf(stderr, "Initializing the distance rmsd parameters\n");
+    fprintf(stderr, "drmsd-pot: %d\n", ir->bDrmsdPot);
+    fprintf(stderr, "drmsd-ref: %f\n", ir->drmsd_ref);
+    fprintf(stderr, "drmsd-fc: %f\n", ir->drmsd_fc);
+    fprintf(stderr, "nstdrmsdpout: %d\n", ir->nstdrmsdpout);
+    /* END */
+
     /* Count the total number of distance rmsd interactions in the system */
     if (gmx_mtop_ftype_count(mtop, F_DRMSDP) == 0)
         {

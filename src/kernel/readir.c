@@ -1987,6 +1987,16 @@ void get_ir(const char *mdparin, const char *mdparout,
     CTYPE ("Output frequency for trace(SD) and S to energy file");
     ITYPE ("nstorireout", ir->nstorireout, 100);
 
+    /* distance RMSD potential */
+    CCTYPE("Distance RMSD potential parameters");
+    CTYPE("Use distance RMSD potential: No or Yes");
+    EETYPE("drmsd-pot",   ir->bDrmsdPot, yesno_names);
+    CTYPE("Distance RMSD potential reference RMSD and force constant");
+    RTYPE ("drmsd-ref",   ir->drmsd_ref,  0.0);
+    RTYPE ("drmsd-k0",    ir->drmsd_fc, 1000.0);
+    CTYPE ("Output frequency for distance RMSD potential to distances file");
+    ITYPE ("nstdrmsdpout", ir->nstdrmsdpout, 100);
+
     /* free energy variables */
     CCTYPE ("Free energy variables");
     EETYPE("free-energy", ir->efep, efep_names);
