@@ -45,9 +45,10 @@
 #include "bondf.h"
 #include "disre.h"
 #include "orires.h"
+#include "drmsdpot.h"
 #include "genborn.h"
 
-
+/* name, long name, number of atoms, nr parameters state A, nr parms state B,  */
 #define  def_bonded(str, lstr, nra, nrpa, nrpb, ind, func) \
     {str, lstr, (nra), (nrpa), (nrpb), IF_BOND,                        (ind), (func)}
 
@@ -143,6 +144,7 @@ const t_interaction_function interaction_function[F_NRE] =
     def_nofc    ("DISRESVIOL",   "D.R.Viol. (nm)"                                       ),
     def_bonded  ("ORIRES",   "Orient. Rest.",   2, 6, 0,  eNR_ORIRES, orires        ),
     def_nofc    ("ORDEV",    "Ori. R. RMSD"                                         ),
+    def_bonded  ("DRMSDP",   "Dis. RMSD Pot.",  2, 6, 0,  eNR_DRMSDP, ta_drmsd_pot   ),
     def_bonded  ("ANGRES",   "Angle Rest.",     4, 3, 3,  eNR_ANGRES, angres        ),
     def_bonded  ("ANGRESZ",  "Angle Rest. Z",   2, 3, 3,  eNR_ANGRESZ, angresz       ),
     def_bonded  ("DIHRES",   "Dih. Rest.",      4, 3, 3,  eNR_DIHRES, dihres        ),

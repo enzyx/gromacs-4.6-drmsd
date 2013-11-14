@@ -111,6 +111,7 @@ enum {
     F_DISRESVIOL,
     F_ORIRES,
     F_ORIRESDEV,
+    F_DRMSDP,
     F_ANGRES,
     F_ANGRESZ,
     F_DIHRES,

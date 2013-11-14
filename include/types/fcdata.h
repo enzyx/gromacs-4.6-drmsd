@@ -99,6 +99,14 @@ typedef struct {
     double **v;
 } t_oriresdata;
 
+/* Distance RMSD Potential stuff */
+typedef struct {
+    real      fc;            /* Force constant for the rmsd potential               */
+    int	      nres;          /* The number of distances accounting to the rmsd potential */
+    real      rmsd;          /* The calculated instantaneous rmsd                   */
+    real     *rt;            /* The calculated instantaneous distances              */
+} t_drmsdpotdata;
+
 /*
  * Data struct used in the force calculation routines
  * for storing the tables for bonded interactions and
@@ -113,6 +121,7 @@ typedef struct {
 
     t_disresdata   disres;
     t_oriresdata   orires;
+    t_drmsdpotdata drmsdp;
 } t_fcdata;
 
 #ifdef __cplusplus
