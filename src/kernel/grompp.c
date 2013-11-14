@@ -545,6 +545,16 @@ new_status(const char *topfile, const char *topppfile, const char *confin,
             warning_note(wi, warn_buf);
         }
     }
+    if (ir->bDrmsdPot == FALSE)
+    {
+        i = rm_interactions(F_DRMSDP, nrmols, molinfo);
+        if (i > 0)
+        {
+            set_warning_line(wi, "unknown", -1);
+            sprintf(warn_buf, "drmsd-pot = no, removed %d distance RMSD pairs", i);
+            warning_note(wi, warn_buf);
+        }
+    }
 
     /* Copy structures from msys to sys */
     molinfo2mtop(nrmols, molinfo, sys);

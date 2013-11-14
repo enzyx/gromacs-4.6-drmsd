@@ -238,6 +238,8 @@ int ifunc_index(directive d, int type)
             return F_DISRES;
         case d_orientation_restraints:
             return F_ORIRES;
+        case d_drmsd_restraints:
+            return F_DRMSDP;
         case d_dihedral_restraints:
             return F_DIHRES;
         default:
@@ -348,6 +350,7 @@ void DS_Init(DirStack **DS)
         set_nec(&(necessary[d_angle_restraints_z]), d_atoms, d_none);
         set_nec(&(necessary[d_distance_restraints]), d_atoms, d_none);
         set_nec(&(necessary[d_orientation_restraints]), d_atoms, d_none);
+        set_nec(&(necessary[d_drmsd_restraints]), d_atoms, d_none);
         set_nec(&(necessary[d_dihedral_restraints]), d_atoms, d_none);
         set_nec(&(necessary[d_cmap]), d_atoms, d_none);
 

@@ -145,6 +145,7 @@ typedef enum {
     d_angle_restraints_z,
     d_distance_restraints,
     d_orientation_restraints,
+    d_drmsd_restraints,
     d_dihedral_restraints,
     d_cmap,
     d_maxdir,
@@ -189,6 +190,7 @@ static const char *ds[d_maxdir+1] = {
     "angle_restraints_z",
     "distance_restraints",
     "orientation_restraints",
+    "drmsd_restraints",
     "dihedral_restraints",
     "cmap",
     "invalid"

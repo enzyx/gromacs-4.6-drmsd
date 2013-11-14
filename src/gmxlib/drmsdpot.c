@@ -41,6 +41,7 @@
 #include "mtop_util.h"
 #include "drmsdpot.h"
 
+#include "names.h"
 
 
 void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
@@ -54,10 +55,26 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
 
     /* START DEBUGING */
     fprintf(stderr, "Initializing the distance rmsd parameters\n");
-    fprintf(stderr, "drmsd-pot: %d\n", ir->bDrmsdPot);
+    fprintf(stderr, "drmsd-pot: %s\n", EBOOL(ir->bDrmsdPot));
     fprintf(stderr, "drmsd-ref: %f\n", ir->drmsd_ref);
     fprintf(stderr, "drmsd-fc: %f\n", ir->drmsd_fc);
     fprintf(stderr, "nstdrmsdpout: %d\n", ir->nstdrmsdpout);
+    fprintf(stderr, "We have %d drmsd pairs\n", gmx_mtop_ftype_count(mtop, F_DRMSDP));
+
+    t_iparams *ip;
+    t_ilist *il;
+    int nmol, i;
+    gmx_mtop_ilistloop_t iloop;
+    iloop     = gmx_mtop_ilistloop_init(mtop);
+    while(gmx_mtop_ilistloop_next(iloop, &il, &nmol))
+        {
+            fprintf(stderr, "Number of molecules of this type: %d\n", nmol);
+            fprintf(stderr, "Number of drmsd interactions in this moleculetype: %d\n", il[F_DRMSDP].nr);
+            for (i = 0; i < il[F_DRMSDP].nr; i += 3)
+            {
+                fprintf(stderr, "Reference distance drmsd: %f\n", mtop->ffparams.iparams[il[F_DRMSDP].iatoms[i]].drmsdp.dref);
+            }
+        }
     /* END */
 
     /* Count the total number of distance rmsd interactions in the system */

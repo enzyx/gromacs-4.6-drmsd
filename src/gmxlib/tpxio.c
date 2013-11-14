@@ -1796,6 +1796,12 @@ void do_iparams(t_fileio *fio, t_functype ftype, t_iparams *iparams,
             gmx_fio_do_real(fio, iparams->orires.obs);
             gmx_fio_do_real(fio, iparams->orires.kfac);
             break;
+        case F_DRMSDP:
+            if (file_version >= 84)
+            {
+                    gmx_fio_do_real(fio, iparams->drmsdp.dref);
+            }
+            break;
         case F_DIHRES:
             if (file_version < 82)
             {

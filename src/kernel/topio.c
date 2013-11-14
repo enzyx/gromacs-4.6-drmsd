@@ -909,6 +909,7 @@ static char **read_topol(const char *infile, const char *outfile,
                         case d_angle_restraints_z:
                         case d_distance_restraints:
                         case d_orientation_restraints:
+                        case d_drmsd_restraints:
                         case d_dihedral_restraints:
                         case d_dihedrals:
                         case d_polarization:
