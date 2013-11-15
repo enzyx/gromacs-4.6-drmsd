@@ -102,9 +102,11 @@ typedef struct {
 /* Distance RMSD Potential stuff */
 typedef struct {
     real      fc;            /* Force constant for the rmsd potential               */
-    int	      nres;          /* The number of distances accounting to the rmsd potential */
+    real      rmsd_ref;      /* The reference rmsd */
+    int       nres;          /* Number of distance rmsd restraints */
+    int	      npairs;        /* The number of distances pairs accounting to the rmsd potential */
     real      rmsd;          /* The calculated instantaneous rmsd                   */
-    real     *rt;            /* The calculated instantaneous distances              */
+    real     *dt;            /* The calculated instantaneous distances              */
 } t_drmsdpotdata;
 
 /*

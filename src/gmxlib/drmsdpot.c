@@ -40,6 +40,7 @@
 #include "main.h"
 #include "mtop_util.h"
 #include "drmsdpot.h"
+#include "smalloc.h"
 
 #include "names.h"
 
@@ -48,10 +49,12 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
                  t_inputrec *ir, const t_commrec *cr, gmx_bool bPartDecomp,
                  t_fcdata *fcd, gmx_bool bIsREMD)
 {
-    t_drmsdpotdata  *dd;
+    t_drmsdpotdata  *drmsddata;
 
     /* Get pointer to drmsdpotdata structure */
-    dd = &(fcd->drmsdp);
+    drmsddata = &(fcd->drmsdp);
+
+
 
     /* START DEBUGING */
     fprintf(stderr, "Initializing the distance rmsd parameters\n");
@@ -66,21 +69,28 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
     int nmol, i;
     gmx_mtop_ilistloop_t iloop;
     iloop     = gmx_mtop_ilistloop_init(mtop);
-    while(gmx_mtop_ilistloop_next(iloop, &il, &nmol))
+    while (gmx_mtop_ilistloop_next(iloop, &il, &nmol))
+    {
+        fprintf(stderr, "Number of molecules of this type: %d\n", nmol);
+        fprintf(stderr,
+                "Number of drmsd interactions in this moleculetype: %d\n",
+                il[F_DRMSDP].nr);
+        for (i = 0; i < il[F_DRMSDP].nr; i += 3)
         {
-            fprintf(stderr, "Number of molecules of this type: %d\n", nmol);
-            fprintf(stderr, "Number of drmsd interactions in this moleculetype: %d\n", il[F_DRMSDP].nr);
-            for (i = 0; i < il[F_DRMSDP].nr; i += 3)
-            {
-                fprintf(stderr, "Reference distance drmsd: %f\n", mtop->ffparams.iparams[il[F_DRMSDP].iatoms[i]].drmsdp.dref);
-            }
+            fprintf(stderr, "Reference distance drmsd: %f\n",
+                    mtop->ffparams.iparams[il[F_DRMSDP].iatoms[i]].drmsdp.dref);
         }
+        fprintf(stderr, "Number of drmsd interactions %d\n",
+                gmx_mtop_ftype_count(mtop, F_DRMSDP));
+    }
     /* END */
+
+
 
     /* Count the total number of distance rmsd interactions in the system */
     if (gmx_mtop_ftype_count(mtop, F_DRMSDP) == 0)
         {
-            dd->nres = 0;
+            drmsddata->nres = 0;
             return;
         }
 
@@ -88,6 +98,34 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
     {
         fprintf(fplog, "Initializing the distance RMSD potential\n");
     }
+
+    /* Feeding constants from inputrec to local structure */
+    drmsddata->fc       = ir->drmsd_fc;
+    drmsddata->rmsd_ref = ir->drmsd_ref;
+
+    /* Assign number of atoms and pairs */
+    drmsddata->nres   = 0;
+    drmsddata->npairs = 0;
+
+    iloop     = gmx_mtop_ilistloop_init(mtop);
+    while (gmx_mtop_ilistloop_next(iloop, &il, &nmol))
+    {
+  /*      np = 0;
+        for (fa = 0; fa < il[F_DISRES].nr; fa += 3)
+        {
+            np++;
+            npair = mtop->ffparams.iparams[il[F_DISRES].iatoms[fa]].disres.npair;
+            if (np == npair)
+            {
+                dd->nres += (ir->eDisre == edrEnsemble ? 1 : nmol) * npair;
+                dd->npair += nmol * npair;
+                np = 0;
+            }
+        }*/
+    }
+
+    /* Setup the array of distances */
+    snew(drmsddata->dt, drmsddata->npairs);
 }
 
 void calc_drmsd_pot(const gmx_multisim_t *ms,
