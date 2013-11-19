@@ -56,6 +56,7 @@
 #include "main.h"
 #include "disre.h"
 #include "orires.h"
+#include "drmsdpot.h"
 #include "force.h"
 #include "nonbonded.h"
 
@@ -4164,6 +4165,13 @@ void calc_bonds(FILE *fplog, const gmx_multisim_t *ms,
                         idef->il[F_DISRES].iatoms,
                         idef->iparams, (const rvec*)x, pbc_null,
                         fcd, hist);
+    }
+    if(idef->il[F_DRMSDP].nr)
+    {
+        calc_drmsd_pot(ms, idef->il[F_DRMSDP].nr,
+                       idef->il[F_DRMSDP].iatoms,
+                       idef->iparams, (const rvec*)x, pbc_null,
+                       fcd, hist);
     }
 
 #pragma omp parallel for num_threads(fr->nthreads) schedule(static)

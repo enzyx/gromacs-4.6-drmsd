@@ -103,8 +103,7 @@ typedef struct {
 typedef struct {
     real      fc;            /* Force constant for the rmsd potential               */
     real      rmsd_ref;      /* The reference rmsd */
-    int       nres;          /* Number of distance rmsd restraints */
-    int	      npairs;        /* The number of distances pairs accounting to the rmsd potential */
+    int	      npairs;        /* The number of atom pairs accounting to the rmsd potential */
     real      rmsd;          /* The calculated instantaneous rmsd                   */
     real     *dt;            /* The calculated instantaneous distances              */
 } t_drmsdpotdata;

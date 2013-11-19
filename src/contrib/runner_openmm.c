@@ -60,6 +60,7 @@
 #include "names.h"
 #include "disre.h"
 #include "orires.h"
+#include "drmsdpot.h"
 #include "pme.h"
 #include "mdatoms.h"
 #include "repl_ex.h"
@@ -1529,6 +1530,7 @@ int mdrunner(gmx_hw_opt_t *hw_opt,
 
     /* This needs to be called before read_checkpoint to extend the state */
     init_disres(fplog,mtop,inputrec,cr,Flags & MD_PARTDEC,fcd,state);
+    init_drmsd_pot(fplog,mtop,inputrec,cr,Flags & MD_PARTDEC,fcd,state);
 
     if (gmx_mtop_ftype_count(mtop,F_ORIRES) > 0)
     {

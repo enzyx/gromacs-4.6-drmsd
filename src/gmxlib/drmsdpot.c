@@ -41,58 +41,75 @@
 #include "mtop_util.h"
 #include "drmsdpot.h"
 #include "smalloc.h"
+#include "copyrite.h"
+#include "pbc.h"
 
 #include "names.h"
 
-
-void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
-                 t_inputrec *ir, const t_commrec *cr, gmx_bool bPartDecomp,
-                 t_fcdata *fcd, gmx_bool bIsREMD)
+void
+init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
+        const t_commrec *cr, gmx_bool bPartDecomp, t_fcdata *fcd,
+        gmx_bool bIsREMD)
 {
-    t_drmsdpotdata  *drmsddata;
+    int nmol, drmsdmols;
+    t_ilist *il;
+    gmx_mtop_ilistloop_t iloop;
+    t_drmsdpotdata *drmsddata;
 
     /* Get pointer to drmsdpotdata structure */
     drmsddata = &(fcd->drmsdp);
 
-
-
     /* START DEBUGING */
-    fprintf(stderr, "Initializing the distance rmsd parameters\n");
-    fprintf(stderr, "drmsd-pot: %s\n", EBOOL(ir->bDrmsdPot));
-    fprintf(stderr, "drmsd-ref: %f\n", ir->drmsd_ref);
-    fprintf(stderr, "drmsd-fc: %f\n", ir->drmsd_fc);
-    fprintf(stderr, "nstdrmsdpout: %d\n", ir->nstdrmsdpout);
-    fprintf(stderr, "We have %d drmsd pairs\n", gmx_mtop_ftype_count(mtop, F_DRMSDP));
+    /*    fprintf(stderr, "Initializing the distance rmsd parameters\n");
+     fprintf(stderr, "drmsd-pot: %s\n", EBOOL(ir->bDrmsdPot));
+     fprintf(stderr, "drmsd-ref: %f\n", ir->drmsd_ref);
+     fprintf(stderr, "drmsd-fc: %f\n", ir->drmsd_fc);
+     fprintf(stderr, "nstdrmsdpout: %d\n", ir->nstdrmsdpout);
+     fprintf(stderr, "We have %d drmsd pairs\n", gmx_mtop_ftype_count(mtop, F_DRMSDP));
 
-    t_iparams *ip;
-    t_ilist *il;
-    int nmol, i;
-    gmx_mtop_ilistloop_t iloop;
-    iloop     = gmx_mtop_ilistloop_init(mtop);
-    while (gmx_mtop_ilistloop_next(iloop, &il, &nmol))
-    {
-        fprintf(stderr, "Number of molecules of this type: %d\n", nmol);
-        fprintf(stderr,
-                "Number of drmsd interactions in this moleculetype: %d\n",
-                il[F_DRMSDP].nr);
-        for (i = 0; i < il[F_DRMSDP].nr; i += 3)
-        {
-            fprintf(stderr, "Reference distance drmsd: %f\n",
-                    mtop->ffparams.iparams[il[F_DRMSDP].iatoms[i]].drmsdp.dref);
-        }
-        fprintf(stderr, "Number of drmsd interactions %d\n",
-                gmx_mtop_ftype_count(mtop, F_DRMSDP));
-    }
+     t_iparams *ip;
+     t_ilist *il;
+     int i;
+     gmx_mtop_ilistloop_t iloop;
+     iloop     = gmx_mtop_ilistloop_init(mtop);
+     while (gmx_mtop_ilistloop_next(iloop, &il, &nmol))
+     {
+     fprintf(stderr, "Number of molecules of this type: %d\n", nmol);
+     fprintf(stderr,
+     "Number of drmsd interactions in this moleculetype: %d\n",
+     il[F_DRMSDP].nr);
+     for (i = 0; i < il[F_DRMSDP].nr; i += 3)
+     {
+     fprintf(stderr, "Reference distance drmsd: %f\n",
+     mtop->ffparams.iparams[il[F_DRMSDP].iatoms[i]].drmsdp.dref);
+     }
+     fprintf(stderr, "Number of drmsd interactions %d\n",
+     gmx_mtop_ftype_count(mtop, F_DRMSDP));
+     }*/
     /* END */
 
-
+    /* Distance rmsd potential should be only applied to one molecule at a time */
+    iloop = gmx_mtop_ilistloop_init(mtop);
+    drmsdmols = 0;
+    while (gmx_mtop_ilistloop_next(iloop, &il, &nmol))
+    {
+        if (il[F_DRMSDP].nr > 0)
+        {
+            drmsdmols += nmol;
+        }
+    }
+    if (drmsdmols > 1)
+    {
+        gmx_fatal(FARGS,
+                "Distance RMSD potential can only be applied to one molecule\n");
+    }
 
     /* Count the total number of distance rmsd interactions in the system */
-    if (gmx_mtop_ftype_count(mtop, F_DRMSDP) == 0)
-        {
-            drmsddata->nres = 0;
-            return;
-        }
+    drmsddata->npairs = gmx_mtop_ftype_count(mtop, F_DRMSDP);
+    if (drmsddata->npairs == 0)
+    {
+        return;
+    }
 
     if (fplog)
     {
@@ -100,48 +117,166 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
     }
 
     /* Feeding constants from inputrec to local structure */
-    drmsddata->fc       = ir->drmsd_fc;
+    drmsddata->fc = ir->drmsd_fc;
     drmsddata->rmsd_ref = ir->drmsd_ref;
-
-    /* Assign number of atoms and pairs */
-    drmsddata->nres   = 0;
-    drmsddata->npairs = 0;
-
-    iloop     = gmx_mtop_ilistloop_init(mtop);
-    while (gmx_mtop_ilistloop_next(iloop, &il, &nmol))
-    {
-  /*      np = 0;
-        for (fa = 0; fa < il[F_DISRES].nr; fa += 3)
-        {
-            np++;
-            npair = mtop->ffparams.iparams[il[F_DISRES].iatoms[fa]].disres.npair;
-            if (np == npair)
-            {
-                dd->nres += (ir->eDisre == edrEnsemble ? 1 : nmol) * npair;
-                dd->npair += nmol * npair;
-                np = 0;
-            }
-        }*/
-    }
 
     /* Setup the array of distances */
     snew(drmsddata->dt, drmsddata->npairs);
+
+    /* Bonded interactions between atoms beyond the longest cut-off distance
+     * cause problems to the domain decomposition. Tell the user to use
+     * particle decomposition instead (Which might be slower) */
+    if (cr && PAR(cr) && !bPartDecomp)
+    {
+        const char *notestr =
+                "NOTE: atoms involved in distance rmsd potential restraints should be "
+                        "within the longest cut-off distance, if this is not the "
+                        "case mdrun generates a fatal error, in that case use "
+                        "particle decomposition (mdrun option -pd)";
+
+        if (MASTER(cr))
+        {
+            fprintf(stderr, "\n%s\n\n", notestr);
+        }
+        if (fplog)
+        {
+            fprintf(fplog, "%s\n", notestr);
+        }
+
+        if (ir->nstdrmsdpout != 0)
+        {
+            if (fplog)
+            {
+                fprintf(fplog,
+                        "\nWARNING: Can not write distance rmsd restraint data to "
+                                "energy file with domain decomposition\n\n");
+            }
+            if (MASTER(cr))
+            {
+                fprintf(stderr,
+                        "\nWARNING: Can not write distance rmsd restraint data to "
+                                "energy file with domain decomposition\n");
+            }
+            ir->nstdrmsdpout = 0;
+        }
+    }
+
+    /* Tell the user about drmsd potential setup */
+    fprintf(stderr,
+            "There are %d atom pairs involved in the distance rmsd potential\n",
+            drmsddata->npairs);
+    please_cite(fplog, "Hansdampf2013");
 }
 
-void calc_drmsd_pot(const gmx_multisim_t *ms,
-                     int nfa, const t_iatom forceatoms[], const t_iparams ip[],
-                     const rvec x[], const t_pbc *pbc,
-                     t_fcdata *fcd, history_t *hist)
+void
+calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
+        const t_iparams ip[], const rvec x[], const t_pbc *pbc, t_fcdata *fcd,
+        history_t *hist)
 {
+    atom_id ai, aj;
+    int fa, type;
+    rvec dx;
+    real d, dmdref, dRMSD;
+    real dref;
+    t_drmsdpotdata *drmsdpotdata;
 
+    drmsdpotdata = &(fcd->drmsdp);
+
+
+    dRMSD = 0.0;
+    fa = 0;
+
+    while (fa < nfa)
+    {
+        type = forceatoms[fa]; /* instantaneous atom pair */
+        ai = forceatoms[fa + 1];
+        aj = forceatoms[fa + 2];
+        dref = ip[type].drmsdp.dref; /* The reference distance of atompair ai, aj */
+
+        /* Get shortest distance ai,aj with respect to periodic boundary conditions */
+        if (pbc)
+        {
+            pbc_dx_aiuc(pbc, x[ai], x[aj], dx);
+        }
+        else
+        {
+            rvec_sub(x[ai], x[aj], dx);
+        }
+
+        d = sqrt(iprod(dx, dx));
+        dmdref = sqr(d - dref);
+        dRMSD += dmdref;
+
+        /* We can save d to drmsdpotdata here but it is not used further */
+        //drmsdpotdata->dt[fa/3] = d;
+
+        fa += 3;
+    }
+
+    dRMSD = sqrt(1. / (drmsdpotdata->npairs) * dRMSD);
+
+    drmsdpotdata->rmsd = dRMSD;
 }
 
-real ta_drmsd_pot(int nfa, const t_iatom forceatoms[], const t_iparams ip[],
-               const rvec x[], rvec f[], rvec fshift[],
-               const t_pbc *pbc, const t_graph *g,
-               real lambda, real *dvdlambda,
-               const t_mdatoms *md, t_fcdata *fcd,
-               int *global_atom_index)
+real
+ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
+        const rvec x[], rvec f[], rvec fshift[], const t_pbc *pbc,
+        const t_graph *g, real lambda, real *dvdlambda, const t_mdatoms *md,
+        t_fcdata *fcd, int *global_atom_index)
 {
-	return 0.0;
+    atom_id         ai, aj;
+    rvec            dx;
+    ivec            dt;
+    int             fa, type, ki = CENTRAL, m;
+    real            fc, vtot, rmsd_ref, rmsd, d, dref, f_scal, fij;
+    t_drmsdpotdata *drmsdpotdata;
+
+    drmsdpotdata = &(fcd->drmsdp);
+
+    //TODO write to file
+
+    fc = drmsdpotdata->fc;
+    rmsd_ref = drmsdpotdata->rmsd_ref;
+    rmsd = drmsdpotdata->rmsd;
+
+    /* Loop over drmsd pairs */
+    for (fa = 0; fa < npairs; fa += 3)
+    {
+        type = forceatoms[fa];
+        ai = forceatoms[fa + 1];
+        aj = forceatoms[fa + 2];
+        dref = ip[type].drmsdp.dref;
+
+        if (pbc)
+        {
+            ki = pbc_dx_aiuc(pbc, x[ai], x[aj], dx);
+        }
+        else
+        {
+            rvec_sub(x[ai], x[aj], dx);
+        }
+        d = sqrt(iprod(dx, dx));
+        f_scal = -fc / (npairs/3.) * (rmsd - rmsd_ref)/(rmsd) * (d - dref)/d;
+
+        if (g)
+        {
+            ivec_sub(SHIFT_IVEC(g, ai), SHIFT_IVEC(g, aj), dt);
+            ki = IVEC2IS(dt);
+        }
+
+        for (m = 0; m < DIM; m++)
+        {
+            fij = f_scal * dx[m];
+
+            f[ai][m] += fij;
+            f[aj][m] -= fij;
+            fshift[ki][m] += fij;
+            fshift[CENTRAL][m] -= fij;
+        }
+    }
+
+    /* Calculate the potential energy */
+    vtot = 0.5 * fc * sqr(rmsd - rmsd_ref);
+
+    return vtot;
 }

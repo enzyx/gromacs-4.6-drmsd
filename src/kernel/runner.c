@@ -1029,7 +1029,6 @@ int mdrunner(gmx_hw_opt_t *hw_opt,
     t_mdatoms      *mdatoms    = NULL;
     t_forcerec     *fr         = NULL;
     t_fcdata       *fcd        = NULL;
-    t_fcdata       *rmsd_fcd   = NULL;
     real            ewaldcoeff = 0;
     gmx_pme_t      *pmedata    = NULL;
     gmx_vsite_t    *vsite      = NULL;
@@ -1295,9 +1294,8 @@ int mdrunner(gmx_hw_opt_t *hw_opt,
     /* This needs to be called before read_checkpoint to extend the state */
     init_disres(fplog, mtop, inputrec, cr, Flags & MD_PARTDEC, fcd, state, repl_ex_nst > 0);
 
-    /* Do the same as disre code */
-    snew(rmsd_fcd,1);
-    init_drmsd_pot(fplog, mtop, inputrec, cr, Flags & MD_PARTDEC, rmsd_fcd, repl_ex_nst > 0);
+    /* Do the same as the disre code */
+    init_drmsd_pot(fplog, mtop, inputrec, cr, Flags & MD_PARTDEC, fcd, repl_ex_nst > 0);
 
     if (gmx_mtop_ftype_count(mtop, F_ORIRES) > 0)
     {

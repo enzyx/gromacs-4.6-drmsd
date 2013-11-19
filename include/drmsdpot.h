@@ -52,6 +52,8 @@ void calc_drmsd_pot(const gmx_multisim_t *ms,
                      t_fcdata *fcd, history_t *hist);
 /*
  * Interaction function of the distance RMSD potential
+ * This function may run on different threads and gets
+ * only a subset of atom coordinates
  */
 t_ifunc ta_drmsd_pot;
 
