@@ -46,8 +46,7 @@
 
 #include "names.h"
 
-void
-init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
+void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
         const t_commrec *cr, gmx_bool bPartDecomp, t_fcdata *fcd,
         gmx_bool bIsREMD)
 {
@@ -58,35 +57,6 @@ init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
 
     /* Get pointer to drmsdpotdata structure */
     drmsddata = &(fcd->drmsdp);
-
-    /* START DEBUGING */
-    /*    fprintf(stderr, "Initializing the distance rmsd parameters\n");
-     fprintf(stderr, "drmsd-pot: %s\n", EBOOL(ir->bDrmsdPot));
-     fprintf(stderr, "drmsd-ref: %f\n", ir->drmsd_ref);
-     fprintf(stderr, "drmsd-fc: %f\n", ir->drmsd_fc);
-     fprintf(stderr, "nstdrmsdpout: %d\n", ir->nstdrmsdpout);
-     fprintf(stderr, "We have %d drmsd pairs\n", gmx_mtop_ftype_count(mtop, F_DRMSDP));
-
-     t_iparams *ip;
-     t_ilist *il;
-     int i;
-     gmx_mtop_ilistloop_t iloop;
-     iloop     = gmx_mtop_ilistloop_init(mtop);
-     while (gmx_mtop_ilistloop_next(iloop, &il, &nmol))
-     {
-     fprintf(stderr, "Number of molecules of this type: %d\n", nmol);
-     fprintf(stderr,
-     "Number of drmsd interactions in this moleculetype: %d\n",
-     il[F_DRMSDP].nr);
-     for (i = 0; i < il[F_DRMSDP].nr; i += 3)
-     {
-     fprintf(stderr, "Reference distance drmsd: %f\n",
-     mtop->ffparams.iparams[il[F_DRMSDP].iatoms[i]].drmsdp.dref);
-     }
-     fprintf(stderr, "Number of drmsd interactions %d\n",
-     gmx_mtop_ftype_count(mtop, F_DRMSDP));
-     }*/
-    /* END */
 
     /* Distance rmsd potential should be only applied to one molecule at a time */
     iloop = gmx_mtop_ilistloop_init(mtop);
@@ -168,8 +138,7 @@ init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
     please_cite(fplog, "Hansdampf2013");
 }
 
-void
-calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
+void calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
         const t_iparams ip[], const rvec x[], const t_pbc *pbc, t_fcdata *fcd,
         history_t *hist)
 {
@@ -181,7 +150,6 @@ calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
     t_drmsdpotdata *drmsdpotdata;
 
     drmsdpotdata = &(fcd->drmsdp);
-
 
     dRMSD = 0.0;
     fa = 0;
@@ -209,7 +177,6 @@ calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
 
         /* We can save d to drmsdpotdata here but it is not used further */
         //drmsdpotdata->dt[fa/3] = d;
-
         fa += 3;
     }
 
@@ -218,17 +185,16 @@ calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
     drmsdpotdata->rmsd = dRMSD;
 }
 
-real
-ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
+real ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
         const rvec x[], rvec f[], rvec fshift[], const t_pbc *pbc,
         const t_graph *g, real lambda, real *dvdlambda, const t_mdatoms *md,
         t_fcdata *fcd, int *global_atom_index)
 {
-    atom_id         ai, aj;
-    rvec            dx;
-    ivec            dt;
-    int             fa, type, ki = CENTRAL, m;
-    real            fc, vtot, rmsd_ref, rmsd, d, dref, f_scal, fij;
+    atom_id ai, aj;
+    rvec dx;
+    ivec dt;
+    int fa, type, ki = CENTRAL, m;
+    real fc, vtot, vpair, rmsd_ref, rmsd, d, dref, f_scal, fij;
     t_drmsdpotdata *drmsdpotdata;
 
     drmsdpotdata = &(fcd->drmsdp);
@@ -238,6 +204,10 @@ ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
     fc = drmsdpotdata->fc;
     rmsd_ref = drmsdpotdata->rmsd_ref;
     rmsd = drmsdpotdata->rmsd;
+
+    /* Calculate the potential energy */
+    vpair = 0.5 * fc * sqr(rmsd - rmsd_ref);
+    vtot = 0;
 
     /* Loop over drmsd pairs */
     for (fa = 0; fa < npairs; fa += 3)
@@ -256,7 +226,8 @@ ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
             rvec_sub(x[ai], x[aj], dx);
         }
         d = sqrt(iprod(dx, dx));
-        f_scal = -fc / (npairs/3.) * (rmsd - rmsd_ref)/(rmsd) * (d - dref)/d;
+        f_scal = -fc / (npairs / 3.) * (rmsd - rmsd_ref) / (rmsd) * (d - dref)
+                / d;
 
         if (g)
         {
@@ -273,10 +244,10 @@ ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
             fshift[ki][m] += fij;
             fshift[CENTRAL][m] -= fij;
         }
-    }
 
-    /* Calculate the potential energy */
-    vtot = 0.5 * fc * sqr(rmsd - rmsd_ref);
+        /* Add the energy per atom pair to the total energy */
+        vtot += vpair;
+    }
 
     return vtot;
 }
