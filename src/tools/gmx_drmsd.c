@@ -95,21 +95,21 @@ int gmx_drmsd(int argc, char *argv[])
         }
     }
 
-    out = xvgropen(opt2fn("-o", NFILE, fnm), "Read variable", "Time (ps)", "[?]", oenv); /* open output file */
+    out = xvgropen(opt2fn("-o", NFILE, fnm), "Read variable", "Time (ps)", "dRMSD (nm)", oenv); /* open output file */
 
     init_drmsd_pot(fplog, &mtop, &ir, cr, 0, &fcd, 0);
 
     natoms = read_first_x(oenv, &status, ftp2fn(efTRX, NFILE, fnm), &t, &x, box); /* read number of atoms in system */
 
-    history_t      *hist;
-    calc_drmsd_pot( cr->ms, top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms, top->idef.iparams,
-    		(const rvec*) x, pbc_null, &fcd, hist);
+    calc_drmsd( cr->ms, top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms, top->idef.iparams,
+    		(const rvec*) x, pbc_null, &fcd);
 
-    fprintf(stderr, "\n fcd.drmsdp.rmsd     = %7f\n", fcd.drmsdp.rmsd);
-    fprintf(stderr, "\n fcd.drmsdp.rmsd_ref = %7f\n", fcd.drmsdp.rmsd_ref);
-    fprintf(stderr, "\n fcd.drmsdp.npairs   = %7f\n", fcd.drmsdp.npairs);
-    fprintf(stderr, "\n fcd.drmsdp.fc       = %7f\n", fcd.drmsdp.fc);
-    fprintf(stderr, "\n fcd.drmsdp.dt       = %7f\n", fcd.drmsdp.dt);
+    /* Values from drmsd calculation
+    fprintf(stderr, "fcd.drmsdp.rmsd     = %7f\n", fcd.drmsdp.rmsd);
+    fprintf(stderr, "fcd.drmsdp.rmsd_ref = %7f\n", fcd.drmsdp.rmsd_ref);
+    fprintf(stderr, "fcd.drmsdp.npairs   = %7d\n", fcd.drmsdp.npairs);
+    fprintf(stderr, "fcd.drmsdp.fc       = %7f\n", fcd.drmsdp.fc);
+    fprintf(stderr, "fcd.drmsdp.dt       = %7f\n", fcd.drmsdp.dt[0]); */
 
 
     /* read out atoms of binding
@@ -120,11 +120,17 @@ int gmx_drmsd(int argc, char *argv[])
     		fprintf(stderr,"\n value = %d",top->idef.il[F_DRMSDP].iatoms[j]);
         }
 	*/
-
+    fprintf(out, "%.0f \t %7f \t %7f \n", t, fcd.drmsdp.rmsd, fcd.drmsdp.rmsd_ref);
     while (read_next_x(oenv, status, &t, natoms, x, box)){
     	/* fprintf(stderr,"got time %f\n",t); */
     	/* fprintf(stderr,"trxstatus->nxframe = %f\n",status->NATOMS); */
     	/* fprintf(out,  "%.0f  %7d\n", t, status->xframe->x); */
+
+        calc_drmsd( cr->ms, top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms, top->idef.iparams,
+        		(const rvec*) x, pbc_null, &fcd);
+
+        fprintf(out, "%.0f \t %7f \t %7f \n", t, fcd.drmsdp.rmsd, fcd.drmsdp.rmsd_ref);
+
     }
     close_trj(status);
 
