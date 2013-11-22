@@ -4168,10 +4168,10 @@ void calc_bonds(FILE *fplog, const gmx_multisim_t *ms,
     }
     if(idef->il[F_DRMSDP].nr)
     {
-        calc_drmsd_pot(ms, idef->il[F_DRMSDP].nr,
+        calc_drmsd(ms, idef->il[F_DRMSDP].nr,
                        idef->il[F_DRMSDP].iatoms,
                        idef->iparams, (const rvec*)x, pbc_null,
-                       fcd, hist);
+                       fcd);
     }
 
 #pragma omp parallel for num_threads(fr->nthreads) schedule(static)

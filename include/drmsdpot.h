@@ -46,15 +46,19 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
                  t_inputrec *ir, const t_commrec *cr, gmx_bool bPartDecomp,
                  t_fcdata *fcd, gmx_bool bIsREMD);
 
-void calc_drmsd_pot(const gmx_multisim_t *ms,
+/*
+ * Calculate the drmsd value of the current  step.
+ * This has to be done before domain decomposition
+ */
+void calc_drmsd(const gmx_multisim_t *ms,
                      int nfa, const t_iatom forceatoms[], const t_iparams ip[],
                      const rvec x[], const t_pbc *pbc,
-                     t_fcdata *fcd, history_t *hist);
+                     t_fcdata *fcd);
 /*
  * Interaction function of the distance RMSD potential
  * This function may run on different threads and gets
  * only a subset of atom coordinates
  */
-t_ifunc ta_drmsd_pot;
+t_ifunc if_drmsd_pot;
 
 #endif

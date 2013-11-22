@@ -141,9 +141,8 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
     please_cite(fplog, "Hansdampf2013");
 }
 
-void calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
-        const t_iparams ip[], const rvec x[], const t_pbc *pbc, t_fcdata *fcd,
-        history_t *hist)
+void calc_drmsd(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
+        const t_iparams ip[], const rvec x[], const t_pbc *pbc, t_fcdata *fcd)
 {
     atom_id ai, aj;
     int fa, type;
@@ -188,7 +187,7 @@ void calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[
     drmsdpotdata->rmsd = dRMSD;
 }
 
-real ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
+real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
         const rvec x[], rvec f[], rvec fshift[], const t_pbc *pbc,
         const t_graph *g, real lambda, real *dvdlambda, const t_mdatoms *md,
         t_fcdata *fcd, int *global_atom_index)
