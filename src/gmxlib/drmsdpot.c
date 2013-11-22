@@ -132,9 +132,12 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
     }
 
     /* Tell the user about drmsd potential setup */
-    fprintf(stderr,
-            "There are %d atom pairs involved in the distance rmsd potential\n",
-            drmsddata->npairs);
+    if (fplog)
+    {
+        fprintf(fplog,
+                "There are %d atom pairs involved in the distance rmsd potential\n",
+                drmsddata->npairs);
+    }
     please_cite(fplog, "Hansdampf2013");
 }
 
@@ -156,9 +159,9 @@ void calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[
 
     while (fa < nfa)
     {
-        type = forceatoms[fa]; /* instantaneous atom pair */
-        ai = forceatoms[fa + 1];
-        aj = forceatoms[fa + 2];
+        type = forceatoms[fa];       /* instantaneous atom pair */
+        ai   = forceatoms[fa + 1];
+        aj   = forceatoms[fa + 2];
         dref = ip[type].drmsdp.dref; /* The reference distance of atompair ai, aj */
 
         /* Get shortest distance ai,aj with respect to periodic boundary conditions */
@@ -171,13 +174,13 @@ void calc_drmsd_pot(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[
             rvec_sub(x[ai], x[aj], dx);
         }
 
-        d = sqrt(iprod(dx, dx));
+        d      = sqrt(iprod(dx, dx));
         dmdref = sqr(d - dref);
         dRMSD += dmdref;
 
-        /* We can save d to drmsdpotdata here but it is not used further */
+        /* We could save d to drmsdpotdata here but it is not used further */
         //drmsdpotdata->dt[fa/3] = d;
-        fa += 3;
+        fa    += 3;
     }
 
     dRMSD = sqrt(1. / (drmsdpotdata->npairs) * dRMSD);
@@ -194,27 +197,30 @@ real ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
     rvec dx;
     ivec dt;
     int fa, type, ki = CENTRAL, m;
-    real fc, vtot, vpair, rmsd_ref, rmsd, d, dref, f_scal, fij;
+    real fc, vtot, vpair, dvdlpair, rmsd_ref, rmsd, d, dref, f_scal, fij, ffc;
     t_drmsdpotdata *drmsdpotdata;
 
     drmsdpotdata = &(fcd->drmsdp);
 
-    //TODO write to file
-
-    fc = drmsdpotdata->fc;
+    /* Fetch data from drmsdpotdata */
+    fc       = drmsdpotdata->fc;
     rmsd_ref = drmsdpotdata->rmsd_ref;
-    rmsd = drmsdpotdata->rmsd;
+    rmsd     = drmsdpotdata->rmsd;
 
     /* Calculate the potential energy */
-    vpair = 0.5 * fc * sqr(rmsd - rmsd_ref);
-    vtot = 0;
+    dvdlpair = 0.5 * fc * sqr(rmsd - rmsd_ref);
+    vpair    = lambda * dvdlpair;
+    vtot     = 0;
+
+    /* Calculate force prefactor outside the loop */
+    ffc = -fc * lambda / (npairs / 3.) * (rmsd - rmsd_ref) / (rmsd);
 
     /* Loop over drmsd pairs */
     for (fa = 0; fa < npairs; fa += 3)
     {
         type = forceatoms[fa];
-        ai = forceatoms[fa + 1];
-        aj = forceatoms[fa + 2];
+        ai   = forceatoms[fa + 1];
+        aj   = forceatoms[fa + 2];
         dref = ip[type].drmsdp.dref;
 
         if (pbc)
@@ -225,9 +231,8 @@ real ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
         {
             rvec_sub(x[ai], x[aj], dx);
         }
-        d = sqrt(iprod(dx, dx));
-        f_scal = -fc / (npairs / 3.) * (rmsd - rmsd_ref) / (rmsd) * (d - dref)
-                / d;
+        d      = sqrt(iprod(dx, dx));
+        f_scal = ffc * (d - dref) / d;
 
         if (g)
         {
@@ -237,16 +242,16 @@ real ta_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
 
         for (m = 0; m < DIM; m++)
         {
-            fij = f_scal * dx[m];
-
-            f[ai][m] += fij;
-            f[aj][m] -= fij;
-            fshift[ki][m] += fij;
+            fij                 = f_scal * dx[m];
+            f[ai][m]           += fij;
+            f[aj][m]           -= fij;
+            fshift[ki][m]      += fij;
             fshift[CENTRAL][m] -= fij;
         }
 
         /* Add the energy per atom pair to the total energy */
-        vtot += vpair;
+        vtot       += vpair;
+        *dvdlambda += dvdlpair;
     }
 
     return vtot;
