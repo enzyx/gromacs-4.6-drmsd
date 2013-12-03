@@ -888,6 +888,7 @@ void pr_inputrec(FILE *fp, int indent, const char *title, t_inputrec *ir,
 
         PS("drmsd-pot", EBOOL(ir->bDrmsdPot));
         PR("drmsd-ref", ir->drmsd_ref);
+        PR("drmsd-refB", ir->drmsd_refB);
         PR("drmsd-k0", ir->drmsd_fc);
         PR("nstdrmsdpout", ir->nstdrmsdpout);
 
@@ -1094,7 +1095,8 @@ void pr_iparams(FILE *fp, t_functype ftype, t_iparams *iparams)
                     iparams->orires.c, iparams->orires.obs, iparams->orires.kfac);
             break;
         case F_DRMSDP:
-            fprintf(fp, "dref0=%15.8e\n", iparams->drmsdp.dref);
+            fprintf(fp, "dref=%15.8e, drefB=%15.8e\n", 
+                    iparams->drmsdp.dref, iparams->drmsdp.drefB);
             break;
         case F_DIHRES:
             fprintf(fp, "phiA=%15.8e, dphiA=%15.8e, kfacA=%15.8e, phiB=%15.8e, dphiB=%15.8e, kfacB=%15.8e\n",

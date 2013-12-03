@@ -1051,7 +1051,7 @@ static void gen_local_top(const gmx_mtop_t *mtop, const t_inputrec *ir,
                 qA[ag] = atom->q;
                 qB[ag] = atom->qB;
             }
-            gmx_sort_ilist_fe(&top->idef, qA, qB);
+            gmx_sort_ilist_fe(&top->idef, qA, qB, (ir->drmsd_ref != ir->drmsd_refB));
             sfree(qA);
             sfree(qB);
         }

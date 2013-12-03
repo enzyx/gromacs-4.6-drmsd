@@ -373,6 +373,7 @@ typedef struct {
     int             nstorireout;          /* frequency of writing tr(SD) to enx           */
     gmx_bool        bDrmsdPot;            /* Enable the distance based RMSD potential    */
     real            drmsd_ref;            /* Reference distance drmsd */
+    real            drmsd_refB;           /* Reference distance drmsd for state B */
     real            drmsd_fc;             /* Force constant for distance RMSD potential */
     int             nstdrmsdpout;         /* Frequency of writing dRMSD potential to output file */
     real            dihre_fc;             /* force constant for dihedral restraints (obsolete)	*/

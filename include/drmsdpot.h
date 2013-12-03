@@ -53,7 +53,7 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
 void calc_drmsd(const gmx_multisim_t *ms,
                      int nfa, const t_iatom forceatoms[], const t_iparams ip[],
                      const rvec x[], const t_pbc *pbc,
-                     t_fcdata *fcd);
+                     t_fcdata *fcd, real lambda);
 /*
  * Interaction function of the distance RMSD potential
  * This function may run on different threads and gets

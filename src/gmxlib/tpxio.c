@@ -75,7 +75,7 @@
 static const char *tpx_tag = TPX_TAG_RELEASE;
 
 /* This number should be increased whenever the file format changes! */
-static const int tpx_version = 84;
+static const int tpx_version = 85;
 
 /* This number should only be increased when you edit the TOPOLOGY section
  * or the HEADER of the tpx format.
@@ -1202,6 +1202,7 @@ static void do_inputrec(t_fileio *fio, t_inputrec *ir, gmx_bool bRead,
     {
         gmx_fio_do_gmx_bool(fio, ir->bDrmsdPot);
         gmx_fio_do_real(fio, ir->drmsd_ref);
+        gmx_fio_do_real(fio, ir->drmsd_refB);
         gmx_fio_do_real(fio, ir->drmsd_fc);
         gmx_fio_do_int(fio, ir->nstdrmsdpout);
     }
@@ -1800,6 +1801,7 @@ void do_iparams(t_fileio *fio, t_functype ftype, t_iparams *iparams,
             if (file_version >= 84)
             {
                     gmx_fio_do_real(fio, iparams->drmsdp.dref);
+                    gmx_fio_do_real(fio, iparams->drmsdp.drefB);
             }
             break;
         case F_DIHRES:

@@ -435,6 +435,10 @@ void do_force_lowlevel(FILE       *fplog,   gmx_large_int_t step,
                 }
                 calc_bonds_lambda(fplog, idef, x, fr, &pbc, graph, &(enerd->foreign_grpp), enerd->foreign_term, nrnb, lam_i, md,
                                   fcd, DOMAINDECOMP(cr) ? cr->dd->gatindex : NULL);
+                /* Debug here */
+                fprintf(stderr, "Step is %d calculated calc_bonds_lambda lambda = %f\n", step, lam_i[efptBONDED]);
+                fflush(stderr);
+
                 sum_epot(&ir->opts, &(enerd->foreign_grpp), enerd->foreign_term);
                 enerd->enerpart_lambda[i] += enerd->foreign_term[F_EPOT];
             }

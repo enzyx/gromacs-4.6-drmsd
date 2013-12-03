@@ -341,6 +341,7 @@ assign_param(t_functype ftype, t_iparams *newparam,
             break;
         case F_DRMSDP:
             newparam->drmsdp.dref  = old[0];
+            newparam->drmsdp.drefB = old[1];
             break;
         case F_DIHRES:
             newparam->dihres.phiA   = old[0];

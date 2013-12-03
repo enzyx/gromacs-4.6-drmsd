@@ -87,8 +87,9 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
     }
 
     /* Feeding constants from inputrec to local structure */
-    drmsddata->fc = ir->drmsd_fc;
-    drmsddata->rmsd_ref = ir->drmsd_ref;
+    drmsddata->fc        = ir->drmsd_fc;
+    drmsddata->rmsd_ref  = ir->drmsd_ref;
+    drmsddata->rmsd_refB = ir->drmsd_refB;
 
     /* Setup the array of distances */
     snew(drmsddata->dt, drmsddata->npairs);
@@ -142,26 +143,33 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
 }
 
 void calc_drmsd(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
-        const t_iparams ip[], const rvec x[], const t_pbc *pbc, t_fcdata *fcd)
+        const t_iparams ip[], const rvec x[], const t_pbc *pbc, t_fcdata *fcd, real lambda)
 {
     atom_id ai, aj;
-    int fa, type;
+    int fa, type, N;
     rvec dx;
-    real d, dmdref, dRMSD;
-    real dref;
+    real d, dmdref, dRMSD, L1, dvdlsum;
+    real dref, drefB, drmsd_ref, drmsd_refB;
     t_drmsdpotdata *drmsdpotdata;
 
     drmsdpotdata = &(fcd->drmsdp);
 
-    dRMSD = 0.0;
-    fa = 0;
+    dRMSD   = 0.0;
+    dvdlsum = 0.0;
+    fa      = 0;
+    N       = drmsdpotdata->npairs;
+
+    L1         = 1.0 - lambda;
+    drmsd_ref  = drmsdpotdata->rmsd_ref;
+    drmsd_refB = drmsdpotdata->rmsd_refB;
 
     while (fa < nfa)
     {
-        type = forceatoms[fa];       /* instantaneous atom pair */
-        ai   = forceatoms[fa + 1];
-        aj   = forceatoms[fa + 2];
-        dref = ip[type].drmsdp.dref; /* The reference distance of atompair ai, aj */
+        type  = forceatoms[fa];        /* instantaneous atom pair */
+        ai    = forceatoms[fa + 1];
+        aj    = forceatoms[fa + 2];
+        dref  = ip[type].drmsdp.dref;  /* The reference distance of atompair ai, aj */
+        drefB = ip[type].drmsdp.drefB; /* The reference distance ai, aj in state B */
 
         /* Get shortest distance ai,aj with respect to periodic boundary conditions */
         if (pbc)
@@ -173,18 +181,24 @@ void calc_drmsd(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
             rvec_sub(x[ai], x[aj], dx);
         }
 
-        d      = sqrt(iprod(dx, dx));
-        dmdref = sqr(d - dref);
-        dRMSD += dmdref;
+        d        = sqrt(iprod(dx, dx));
+        dmdref   = sqr(d - L1 * dref - lambda * drefB);
+        dvdlsum += (d - L1 * dref - lambda * drefB) * (dref - drefB);
+        dRMSD   += dmdref;
 
         /* We could save d to drmsdpotdata here but it is not used further */
         //drmsdpotdata->dt[fa/3] = d;
         fa    += 3;
     }
 
-    dRMSD = sqrt(1. / (drmsdpotdata->npairs) * dRMSD);
+    /* Calculate the final distance based RMSD */
+    dRMSD = sqrt(1. / N * dRMSD);
 
-    drmsdpotdata->rmsd = dRMSD;
+    /* Calculate dVdl here because it contains a sum over all drmsd atom pairs */
+    drmsdpotdata->dvdl  = drmsdpotdata->fc * (dRMSD - L1 * drmsd_ref - lambda * drmsd_refB );
+    drmsdpotdata->dvdl *= ( dvdlsum / ( N * dRMSD ) + drmsd_ref - drmsd_refB );
+
+    drmsdpotdata->rmsd  = dRMSD;
 }
 
 real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
@@ -196,31 +210,36 @@ real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
     rvec dx;
     ivec dt;
     int fa, type, ki = CENTRAL, m;
-    real fc, vtot, vpair, dvdlpair, rmsd_ref, rmsd, d, dref, f_scal, fij, ffc;
+    real fc, vtot, vpair, dvdlpair, drmsd_ref, drmsd_refB, drmsd, d, dref, drefB, f_scal, fij, ffc;
+    real L1;
     t_drmsdpotdata *drmsdpotdata;
 
     drmsdpotdata = &(fcd->drmsdp);
 
     /* Fetch data from drmsdpotdata */
-    fc       = drmsdpotdata->fc;
-    rmsd_ref = drmsdpotdata->rmsd_ref;
-    rmsd     = drmsdpotdata->rmsd;
+    fc         = drmsdpotdata->fc;
+    drmsd_ref  = drmsdpotdata->rmsd_ref;
+    drmsd_refB = drmsdpotdata->rmsd_refB;
+    drmsd      = drmsdpotdata->rmsd;
+
+    L1 = 1.0 - lambda;
 
     /* Calculate the potential energy */
-    dvdlpair = 0.5 * fc * sqr(rmsd - rmsd_ref);
-    vpair    = lambda * dvdlpair;
+    vpair    = 0.5 * fc * sqr(drmsd - L1 * drmsd_ref - lambda * drmsd_refB);
+    dvdlpair = drmsdpotdata->dvdl;
     vtot     = 0;
 
     /* Calculate force prefactor outside the loop */
-    ffc = -fc * lambda / (npairs / 3.) * (rmsd - rmsd_ref) / (rmsd);
+    ffc = -fc / (npairs / 3.) * (drmsd - L1 * drmsd_ref - lambda * drmsd_refB) / (drmsd);
 
     /* Loop over drmsd pairs */
     for (fa = 0; fa < npairs; fa += 3)
     {
-        type = forceatoms[fa];
-        ai   = forceatoms[fa + 1];
-        aj   = forceatoms[fa + 2];
-        dref = ip[type].drmsdp.dref;
+        type  = forceatoms[fa];
+        ai    = forceatoms[fa + 1];
+        aj    = forceatoms[fa + 2];
+        dref  = ip[type].drmsdp.dref;
+        drefB = ip[type].drmsdp.drefB;
 
         if (pbc)
         {
@@ -231,7 +250,7 @@ real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
             rvec_sub(x[ai], x[aj], dx);
         }
         d      = sqrt(iprod(dx, dx));
-        f_scal = ffc * (d - dref) / d;
+        f_scal = ffc * (d - L1 * dref - lambda * drefB) / d;
 
         if (g)
         {

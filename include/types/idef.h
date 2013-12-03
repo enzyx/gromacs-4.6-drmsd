@@ -261,7 +261,7 @@ typedef union
         int  ex, power, label; real c, obs, kfac;
     } orires;
     struct {
-        real dref;
+        real dref, drefB;
     } drmsdp;
     struct {
         int  table; real kA; real kB;

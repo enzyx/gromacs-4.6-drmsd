@@ -1866,7 +1866,7 @@ void dd_make_local_top(FILE *fplog,
 }
 
 void dd_sort_local_top(gmx_domdec_t *dd, t_mdatoms *mdatoms,
-                       gmx_localtop_t *ltop)
+                       gmx_localtop_t *ltop, t_inputrec *ir)
 {
     if (dd->reverse_top->ilsort == ilsortNO_FE)
     {
@@ -1874,7 +1874,7 @@ void dd_sort_local_top(gmx_domdec_t *dd, t_mdatoms *mdatoms,
     }
     else
     {
-        gmx_sort_ilist_fe(&ltop->idef, mdatoms->chargeA, mdatoms->chargeB);
+        gmx_sort_ilist_fe(&ltop->idef, mdatoms->chargeA, mdatoms->chargeB, (ir->drmsd_ref != ir->drmsd_refB));
     }
 }
 

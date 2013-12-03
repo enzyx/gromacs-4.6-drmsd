@@ -291,7 +291,7 @@ void dd_make_local_top(FILE *fplog,
                        gmx_mtop_t *top, gmx_localtop_t *ltop);
 
 void dd_sort_local_top(gmx_domdec_t *dd, t_mdatoms *mdatoms,
-                       gmx_localtop_t *ltop);
+                       gmx_localtop_t *ltop, t_inputrec *ir);
 /* Sort ltop->ilist when we are doing free energy. */
 
 GMX_LIBMD_EXPORT

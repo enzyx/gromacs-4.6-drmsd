@@ -4171,7 +4171,7 @@ void calc_bonds(FILE *fplog, const gmx_multisim_t *ms,
         calc_drmsd(ms, idef->il[F_DRMSDP].nr,
                        idef->il[F_DRMSDP].iatoms,
                        idef->iparams, (const rvec*)x, pbc_null,
-                       fcd);
+                       fcd, lambda[efptBONDED]);
     }
 
 #pragma omp parallel for num_threads(fr->nthreads) schedule(static)
@@ -4278,12 +4278,22 @@ void calc_bonds_lambda(FILE *fplog,
     snew(f, fr->natoms_force);
     snew(fshift, SHIFTS);
 
+    /* Calculate the drmsd for the foreign lambda value */
+    if (idef->il[F_DRMSDP].nr)
+    {
+        calc_drmsd(NULL, idef->il[F_DRMSDP].nr, idef->il[F_DRMSDP].iatoms,
+                idef->iparams, (const rvec*) x, pbc_null, fcd,
+                lambda[efptBONDED]);
+
+        fprintf(stderr, "DRMSD: idef->il[F_DRMSDP].nr = %d\n", idef->il[F_DRMSDP].nr);
+    }
+
     /* Loop over all bonded force types to calculate the bonded energies */
     for (ftype = 0; (ftype < F_NRE); ftype++)
     {
         if (ftype_is_bonded_potential(ftype))
         {
-            /* Set the work range of thread 0 to the perturbed bondeds only */
+            /* Set the work range of thread 0 to the perturbed bonds only */
             nr_nonperturbed                       = idef->il[ftype].nr_nonperturbed;
             nr                                    = idef->il[ftype].nr;
             idef_fe.il_thread_division[ftype*2+0] = nr_nonperturbed;
@@ -4291,6 +4301,10 @@ void calc_bonds_lambda(FILE *fplog,
 
             /* This is only to get the flop count correct */
             idef_fe.il[ftype].nr = nr - nr_nonperturbed;
+
+            if( ftype == F_DRMSDP ){
+                fprintf(stderr, "We have %d perturbed atoms for F_DRMSDP\n", nr-nr_nonperturbed);
+            }
 
             if (nr - nr_nonperturbed > 0)
             {

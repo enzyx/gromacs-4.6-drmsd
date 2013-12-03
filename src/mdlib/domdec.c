@@ -9778,7 +9778,7 @@ void dd_partition_system(FILE                *fplog,
              comm->nat[ddnatCON], dd->gatindex, 0, dd->nat_home, mdatoms);
 
     /* Now we have the charges we can sort the FE interactions */
-    dd_sort_local_top(dd, mdatoms, top_local);
+    dd_sort_local_top(dd, mdatoms, top_local, ir);
 
     if (vsite != NULL)
     {

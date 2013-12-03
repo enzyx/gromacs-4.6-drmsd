@@ -131,6 +131,9 @@ static gmx_bool ip_pert(int ftype, const t_iparams *ip)
         case F_CMAP:
             bPert = FALSE;
             break;
+        case F_DRMSDP:
+            bPert = (ip->drmsdp.dref != ip->drmsdp.drefB);
+            break;
         default:
             bPert = FALSE;
             gmx_fatal(FARGS, "Function type %s not implemented in ip_pert",
@@ -196,7 +199,7 @@ gmx_bool gmx_mtop_bondeds_free_energy(const gmx_mtop_t *mtop)
     return (bPert ? ilsortFE_UNSORTED : ilsortNO_FE);
 }
 
-void gmx_sort_ilist_fe(t_idef *idef, const real *qA, const real *qB)
+void gmx_sort_ilist_fe(t_idef *idef, const real *qA, const real *qB, gmx_bool bDrmsdRefScale)
 {
     int        ftype, nral, i, ic, ib, a;
     t_iparams *iparams;
@@ -229,7 +232,8 @@ void gmx_sort_ilist_fe(t_idef *idef, const real *qA, const real *qB)
             while (i < ilist->nr)
             {
                 /* Check if this interaction is perturbed */
-                if (ip_q_pert(ftype, iatoms+i, iparams, qA, qB))
+                if (ip_q_pert(ftype, iatoms + i, iparams, qA, qB)
+                        || (ftype == F_DRMSDP && bDrmsdRefScale))
                 {
                     /* Copy to the perturbed buffer */
                     if (ib + 1 + nral > iabuf_nalloc)

@@ -75,6 +75,7 @@ int gmx_drmsd(int argc, char *argv[])
     read_tpx(ftp2fn(efTPX, NFILE, fnm), &ir, box, &ntopatoms, xtop, NULL, NULL, &mtop); /* read topology from tpr file */
 
     fprintf(stderr,"drmsd reference is %f\n",ir.drmsd_ref);
+    fprintf(stderr,"drmsd reference for state B is %f\n",ir.drmsd_refB);
     fprintf(stderr,"drmsd fc is %f\n",ir.drmsd_fc);
 
 
@@ -101,8 +102,9 @@ int gmx_drmsd(int argc, char *argv[])
 
     natoms = read_first_x(oenv, &status, ftp2fn(efTRX, NFILE, fnm), &t, &x, box); /* read number of atoms in system */
 
+    //TODO: Respect the lambda parameter!
     calc_drmsd( cr->ms, top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms, top->idef.iparams,
-    		(const rvec*) x, pbc_null, &fcd);
+    		(const rvec*) x, pbc_null, &fcd, 0);
 
     /* Values from drmsd calculation
     fprintf(stderr, "fcd.drmsdp.rmsd     = %7f\n", fcd.drmsdp.rmsd);
@@ -126,8 +128,9 @@ int gmx_drmsd(int argc, char *argv[])
     	/* fprintf(stderr,"trxstatus->nxframe = %f\n",status->NATOMS); */
     	/* fprintf(out,  "%.0f  %7d\n", t, status->xframe->x); */
 
+        //TODO: Respect the lambda parameter!
         calc_drmsd( cr->ms, top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms, top->idef.iparams,
-        		(const rvec*) x, pbc_null, &fcd);
+        		(const rvec*) x, pbc_null, &fcd, 0);
 
         fprintf(out, "%.0f \t %7f \t %7f \n", t, fcd.drmsdp.rmsd, fcd.drmsdp.rmsd_ref);
 

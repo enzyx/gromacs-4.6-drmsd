@@ -1991,8 +1991,11 @@ void get_ir(const char *mdparin, const char *mdparout,
     CCTYPE("Distance RMSD potential parameters");
     CTYPE("Use distance RMSD potential: No or Yes");
     EETYPE("drmsd-pot",   ir->bDrmsdPot, yesno_names);
-    CTYPE("Distance RMSD potential reference RMSD and force constant");
+    CTYPE("Distance RMSD potential reference RMSD");
     RTYPE ("drmsd-ref",   ir->drmsd_ref,  0.0);
+    CTYPE("Distance RMSD potential reference RMSD for state B");
+    RTYPE ("drmsd-refB",   ir->drmsd_refB,  ir->drmsd_ref);
+    CTYPE("Distance RMSD potential force constant");
     RTYPE ("drmsd-k0",    ir->drmsd_fc, 1000.0);
     CTYPE ("Output frequency for distance RMSD potential to distances file");
     ITYPE ("nstdrmsdpout", ir->nstdrmsdpout, 100);
