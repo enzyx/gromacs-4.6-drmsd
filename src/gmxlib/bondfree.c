@@ -4284,8 +4284,6 @@ void calc_bonds_lambda(FILE *fplog,
         calc_drmsd(NULL, idef->il[F_DRMSDP].nr, idef->il[F_DRMSDP].iatoms,
                 idef->iparams, (const rvec*) x, pbc_null, fcd,
                 lambda[efptBONDED]);
-
-        fprintf(stderr, "DRMSD: idef->il[F_DRMSDP].nr = %d\n", idef->il[F_DRMSDP].nr);
     }
 
     /* Loop over all bonded force types to calculate the bonded energies */
