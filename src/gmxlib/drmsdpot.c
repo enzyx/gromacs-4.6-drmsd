@@ -152,9 +152,6 @@ void calc_drmsd(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
     real dref, drefB, drmsd_ref, drmsd_refB;
     t_drmsdpotdata *drmsdpotdata;
 
-
-    fprintf(stderr,"variable declaration done\n");
-
     drmsdpotdata = &(fcd->drmsdp);
 
     dRMSD   = 0.0;
@@ -166,31 +163,23 @@ void calc_drmsd(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
     drmsd_ref  = drmsdpotdata->rmsd_ref;
     drmsd_refB = drmsdpotdata->rmsd_refB;
 
-    int i;
     while (fa < nfa)
     {
-    	fprintf(stderr,"starting while loop %d... ",i);
         type  = forceatoms[fa];        /* instantaneous atom pair */
         ai    = forceatoms[fa + 1];
         aj    = forceatoms[fa + 2];
         dref  = ip[type].drmsdp.dref;  /* The reference distance of atompair ai, aj */
         drefB = ip[type].drmsdp.drefB; /* The reference distance ai, aj in state B */
 
-
-        fprintf(stderr," completed assignment... ");
         /* Get shortest distance ai,aj with respect to periodic boundary conditions */
         if (pbc)
         {
-            fprintf(stderr," pbc true... ");
             pbc_dx_aiuc(pbc, x[ai], x[aj], dx);
-            fprintf(stderr," pbc diff calculated... ");
         }
         else
         {
-        	fprintf(stderr," pbc false... ");
             rvec_sub(x[ai], x[aj], dx);
         }
-        fprintf(stderr," pbc corr done... ");
 
         d        = sqrt(iprod(dx, dx));
         dmdref   = sqr(d - L1 * dref - lambda * drefB);
@@ -200,11 +189,7 @@ void calc_drmsd(const gmx_multisim_t *ms, int nfa, const t_iatom forceatoms[],
         /* We could save d to drmsdpotdata here but it is not used further */
         //drmsdpotdata->dt[fa/3] = d;
         fa    += 3;
-        fprintf(stderr,"done\n");
-        i++;
     }
-
-
 
     /* Calculate the final distance based RMSD */
     dRMSD = sqrt(1. / N * dRMSD);
