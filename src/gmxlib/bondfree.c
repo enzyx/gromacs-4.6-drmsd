@@ -4300,10 +4300,6 @@ void calc_bonds_lambda(FILE *fplog,
             /* This is only to get the flop count correct */
             idef_fe.il[ftype].nr = nr - nr_nonperturbed;
 
-            if( ftype == F_DRMSDP ){
-                fprintf(stderr, "We have %d perturbed atoms for F_DRMSDP\n", nr-nr_nonperturbed);
-            }
-
             if (nr - nr_nonperturbed > 0)
             {
                 v = calc_one_bond(fplog, 0, ftype, &idef_fe,
