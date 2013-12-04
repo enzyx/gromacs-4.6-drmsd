@@ -185,7 +185,7 @@ int gmx_drmsd(int argc, char *argv[])
 
     init_drmsd_pot(fplog, &mtop, &ir, cr, 0, &fcd, 0);
 
-    /*initialise first ddat structure */
+    /* initialise first ddat structure */
 	snew(ddat_head,1);
 	ddat_head->next = ddat_head;
 	ddat = ddat_head;
@@ -240,10 +240,8 @@ int gmx_drmsd(int argc, char *argv[])
     	//fprintf(stderr,"\n exit if_pbc.\n");
 
         //fprintf(stderr,"calculating drmsd %d\n",i);
-        calc_drmsd( cr->ms, top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms,
+        calc_drmsd(top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms,
         		top->idef.iparams, (const rvec*) x, pbc_null, &fcd, lambda);
-
-
 
         /*
         t_drmsd_data *ddat_new = ddat->next;

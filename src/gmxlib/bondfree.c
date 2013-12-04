@@ -4168,7 +4168,7 @@ void calc_bonds(FILE *fplog, const gmx_multisim_t *ms,
     }
     if(idef->il[F_DRMSDP].nr)
     {
-        calc_drmsd(ms, idef->il[F_DRMSDP].nr,
+        calc_drmsd(idef->il[F_DRMSDP].nr,
                        idef->il[F_DRMSDP].iatoms,
                        idef->iparams, (const rvec*)x, pbc_null,
                        fcd, lambda[efptBONDED]);
@@ -4281,7 +4281,7 @@ void calc_bonds_lambda(FILE *fplog,
     /* Calculate the drmsd for the foreign lambda value */
     if (idef->il[F_DRMSDP].nr)
     {
-        calc_drmsd(NULL, idef->il[F_DRMSDP].nr, idef->il[F_DRMSDP].iatoms,
+        calc_drmsd(idef->il[F_DRMSDP].nr, idef->il[F_DRMSDP].iatoms,
                 idef->iparams, (const rvec*) x, pbc_null, fcd,
                 lambda[efptBONDED]);
     }

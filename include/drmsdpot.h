@@ -50,8 +50,7 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop,
  * Calculate the drmsd value of the current  step.
  * This has to be done before domain decomposition
  */
-void calc_drmsd(const gmx_multisim_t *ms,
-                     int nfa, const t_iatom forceatoms[], const t_iparams ip[],
+void calc_drmsd(int nfa, const t_iatom forceatoms[], const t_iparams ip[],
                      const rvec x[], const t_pbc *pbc,
                      t_fcdata *fcd, real lambda);
 /*
