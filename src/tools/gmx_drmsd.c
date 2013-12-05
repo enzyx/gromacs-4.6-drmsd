@@ -49,6 +49,7 @@
 #include "vec.h"
 #include "xvgr.h"
 #include "gmx_ana.h"
+#include "copyrite.h"
 
 #include "drmsdpot.h"
 
@@ -58,24 +59,14 @@ typedef struct t_drmsd_data
     struct t_drmsd_data *next;
 } t_drmsd_data;
 
-void init_drmsd_data(t_drmsd_data *ddat_head, t_drmsd_data *ddat){
-	/* not working...
-	fprintf(stderr,"starting init\n");
-	snew(ddat_head,1);
-	fprintf(stderr,"alloc\n");
-	ddat_head->next = ddat_head;
-	fprintf(stderr,"next assigned\n");
-	ddat = ddat_head;
-	fprintf(stderr,"init done\n");
-	fprintf(stderr,"pointer of ddat_next: %f \n",ddat->next);
-	*/
-}
-
-void drmsd_data_init(t_drmsd_data *ddat){
+void init_drmsd_data_element(t_drmsd_data *ddat){
 	ddat->next = NULL;
+	ddat->t = 1;
+	ddat->drmsd = 1;
+	ddat->vpot = 1;
 }
 
-void dump_drmsd_xvg(char *filename, const output_env_t oenv, t_drmsd_data *ddat_head, real drmsd_ref)
+void dump_drmsd_xvg(const char *filename, const output_env_t oenv, t_drmsd_data *ddat_head, real drmsd_ref)
 {
 #define NFILE asize(fnm)
 	FILE *out = NULL;
@@ -112,12 +103,11 @@ int gmx_drmsd(int argc, char *argv[])
     t_graph        *g;
     int             ntopatoms, natoms;
     t_trxstatus    *status;
-    t_drmsd_data   *ddat=NULL, *ddat_head=NULL;
+    t_drmsd_data   *ddat_head=NULL, *ddat, *exdd, *exhead;
     real            t;
     rvec           *x;
     matrix          box;
     t_pbc           pbc, *pbc_null;
-    FILE           *fplog;
     output_env_t    oenv;
     gmx_rmpbc_t     gpbc = NULL;
 
@@ -132,7 +122,6 @@ int gmx_drmsd(int argc, char *argv[])
     t_filenm        fnm[] = {
     	{ efTPX, "-s", NULL, ffREAD },
     	{ efTRX, "-f", NULL, ffREAD },
-    	{ efLOG, "-l",  "drmsd", ffWRITE },
     	{ efXVG, "-o",  "drmsd", ffWRITE }
     };
 
@@ -146,8 +135,6 @@ int gmx_drmsd(int argc, char *argv[])
      * oenv is the output environment*/
     parse_common_args(&argc, argv, PCA_CAN_TIME | PCA_CAN_VIEW | PCA_BE_NICE,
                       NFILE, fnm, asize(pa), pa, asize(desc), desc, 0, NULL, &oenv);
-
-    gmx_log_open(ftp2fn(efLOG, NFILE, fnm), cr, FALSE, 0, &fplog); /* initialize log */
 
     read_tpxheader(ftp2fn(efTPX, NFILE, fnm), &header, FALSE, NULL, NULL);
     snew(xtop, header.natoms); /* allocate memory for xtop vector */
@@ -176,18 +163,15 @@ int gmx_drmsd(int argc, char *argv[])
         }
         else
         {
-            g = mk_graph(fplog, &top->idef, 0, mtop.natoms, FALSE, FALSE);
+            g = mk_graph(stderr, &top->idef, 0, mtop.natoms, FALSE, FALSE);
         }
     }
 
-
-    out = xvgropen(opt2fn("-o", NFILE, fnm), "Read variable", "Time (ps)", "dRMSD (nm)", oenv); /* open output file */
-
-    init_drmsd_pot(fplog, &mtop, &ir, cr, 0, &fcd, 0);
+    init_drmsd_pot(stderr, &mtop, &ir, cr, 0, &fcd, 0);
 
     /* initialise first ddat structure */
 	snew(ddat_head,1);
-	ddat_head->next = ddat_head;
+	init_drmsd_data_element(ddat_head);
 	ddat = ddat_head;
 
     natoms = read_first_x(oenv, &status, ftp2fn(efTRX, NFILE, fnm), &t, &x, box); /* read number of atoms in system */
@@ -205,9 +189,6 @@ int gmx_drmsd(int argc, char *argv[])
         gpbc = gmx_rmpbc_init(&top->idef, ir.ePBC, natoms, box);
     }
 
-    fprintf(stderr,"\nsize of struct t_drmsd_data = %f\n",sizeof(struct t_drmsd_data));
-
-    int i=0;
     do
     {
         //fprintf(stderr,"starting while %d\n",i);
@@ -228,61 +209,41 @@ int gmx_drmsd(int argc, char *argv[])
             }
         }
 
-
-        if(pbc_null){
-        	//fprintf(stderr,"\npbc_null true.\n");
-        }
-        else {
-        	//fprintf(stderr,"\npbc_null true.\n");
-
-        }
-
-    	//fprintf(stderr,"\n exit if_pbc.\n");
-
         //fprintf(stderr,"calculating drmsd %d\n",i);
         calc_drmsd(top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms,
         		top->idef.iparams, (const rvec*) x, pbc_null, &fcd, lambda);
 
-        /*
-        t_drmsd_data *ddat_new = ddat->next;
-        snew(ddat,1);
-        ddat_new->drmsd = fcd.drmsdp.rmsd;
-        ddat_new->t = t;
 
+        /* //output of memory locations
+        fprintf(stderr,"0x%8x next \t 0x%8x t \t%f \t 0x%8x drmsd \t%f \t 0x%8x vpot \t%f\n",\
+        		ddat->next,ddat->t,ddat->t,ddat->drmsd,ddat->drmsd,ddat->vpot,ddat->vpot);
+        		*/
 
-		fprintf(stderr,"\n allocated and written into: %f \t %f \n",ddat_new->drmsd,ddat_new->t);
-        fprintf(stderr,"pointer of ddat_next: %f",ddat->next);
-
-        ddat->next = ddat_new;
-        */
-
-        //fprintf(stderr,"starting alloc %d\n",i++);
-        fprintf(stderr,"allocating ddat->next to ");
         snew(ddat->next,1);
-        fprintf(stderr,"\n0x%x next\n",ddat->next);
-        fprintf(stderr,"0x%x t\n",ddat->t);
-        fprintf(stderr,"0x%x drmsd\n",ddat->drmsd);
-        fprintf(stderr,"0x%x vpot\n",ddat->vpot);
-        ddat=ddat->next;
-        fprintf(stderr,"\n0x%x next\n",ddat->next);
-        fprintf(stderr,"0x%x t\n",ddat->t);
-        fprintf(stderr,"0x%x drmsd\n",ddat->drmsd);
-        fprintf(stderr,"0x%x vpot\n",ddat->vpot);
-        drmsd_data_init(ddat);
+        ddat = ddat->next;
+        init_drmsd_data_element(ddat);
+
         ddat->drmsd = fcd.drmsdp.rmsd;
         ddat->t = t;
         ddat->vpot = if_drmsd_pot(fcd.drmsdp.npairs, top->idef.il[F_DRMSDP].iatoms,
         		top->idef.iparams, (const rvec*) x, f, fshift, pbc_null, g,
-        		lambda, &dvdlambda, md, &fcd, global_atom_index);
+        		lambda, &dvdlambda, NULL, &fcd, global_atom_index);
 
-        fprintf(stderr,"%f \t %f \t %f\n",t,ddat->drmsd,ddat->vpot);
+        //output of entire list so far every iteration
+        /*t_drmsd_data *read_ddat = ddat_head->next;
+        read_ddat = ddat_head->next;
+    	while (read_ddat->next !=NULL){
+    		//fprintf(stderr, "%.0f \t %7f \t %7f \t%7f -- ddat_head\n", ddat_head->t, ddat_head->drmsd, fcd.drmsdp.rmsd_refB, ddat_head->vpot);
+    		fprintf(stderr, "%.0f \t %7f \t %7f \t%7f\n", read_ddat->t, read_ddat->drmsd, fcd.drmsdp.rmsd_refB, read_ddat->vpot);
+    		read_ddat=read_ddat->next;
+    	}*/
+
+        //fprintf(stderr,"%f \t %f \t %f\n",t,ddat->drmsd,ddat->vpot);
     }
     while (read_next_x(oenv, status, &t, natoms, x, box));
 
-    /* dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), oenv, drhead, fcd.drmsdp.rmsd_ref); */
-
-    char *drmsd_filename = opt2fn("-o", NFILE, fnm); // didn't get it to work right away with dump_drmsd_xvg(opt2fn...
-    dump_drmsd_xvg(drmsd_filename, oenv, ddat_head, fcd.drmsdp.rmsd_ref);
+    //dump output to dmrsd.xvg
+    dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), oenv, ddat_head->next, fcd.drmsdp.rmsd_ref);
 
     /* output to screen
     ddat = ddat_head;
@@ -296,10 +257,6 @@ int gmx_drmsd(int argc, char *argv[])
 
 
 
-
-
-
-
     close_trj(status);
     if (ir.ePBC != epbcNONE)
     {
@@ -310,11 +267,10 @@ int gmx_drmsd(int argc, char *argv[])
 
     gmx_finalize_par();
 
-    gmx_log_close(fplog);
 
     fprintf(stderr,"\nit.works\n");
 
-    // thanx(stderr);
+    thanx(stderr);
 
 	return 0;
 }
