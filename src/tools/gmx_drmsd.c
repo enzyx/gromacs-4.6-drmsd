@@ -1,7 +1,7 @@
 /*
  * This file is part of the GROMACS molecular simulation package.
  *
- * Copyright (c) 2013, by Rainer Reisenauer
+ * Copyright (c) 2013, by Rainer Reisenauer, Manuel Luitz
  *
  * GROMACS is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -50,6 +50,7 @@
 #include "xvgr.h"
 #include "gmx_ana.h"
 #include "copyrite.h"
+#include "names.h"
 
 #include "drmsdpot.h"
 
@@ -59,27 +60,34 @@ typedef struct t_drmsd_data
     struct t_drmsd_data *next;
 } t_drmsd_data;
 
-void init_drmsd_data_element(t_drmsd_data *ddat){
-	ddat->next = NULL;
-	ddat->t = 1;
-	ddat->drmsd = 1;
-	ddat->vpot = 1;
+void init_drmsd_data_elemnt(t_drmsd_data *ddat)
+{
+	ddat->next  = NULL;
+	ddat->t     = 0;
+	ddat->drmsd = 0;
+	ddat->vpot  = 0;
 }
 
-void dump_drmsd_xvg(const char *filename, const output_env_t oenv, t_drmsd_data *ddat_head, real drmsd_ref)
+void dump_drmsd_xvg(const char *filename, const output_env_t oenv,
+        t_drmsd_data *ddat_head, real drmsd_ref)
 {
 #define NFILE asize(fnm)
-	FILE *out = NULL;
-	out = xvgropen(filename, "Read variable", "Time (ps)", "dRMSD (nm)", oenv); /* open output file */
+    FILE *out = NULL;
 
-	t_drmsd_data *ddat = ddat_head;
-	while (ddat->next !=NULL){
-		fprintf(out, "%.0f \t %7f \t %7f \t%7f\n", ddat->t, ddat->drmsd, drmsd_ref, ddat->vpot);
-		ddat=ddat->next;
-	}
+    /* open output file */
+    out = xvgropen(filename, "Read variable", "Time (ps)", "dRMSD (nm)", oenv);
 
-	ffclose(out);
+    t_drmsd_data *ddat = ddat_head;
+    while (ddat->next != NULL)
+    {
+        fprintf(out, "%12.7f %12.7f %12.7f %12.7f\n", ddat->t, ddat->drmsd,
+                ddat->vpot, drmsd_ref);
+        ddat = ddat->next;
+    }
+
+    ffclose(out);
 }
+
 
 int gmx_drmsd(int argc, char *argv[])
 {
@@ -93,30 +101,26 @@ int gmx_drmsd(int argc, char *argv[])
     };
 
     FILE           *out = NULL;
-    t_tpxheader     header;
-    t_inputrec      ir;		/*input record, mdp options*/
-    gmx_mtop_t      mtop;	/* topology */
-    rvec           *xtop;	/*vector with entry for every atom */
-    gmx_localtop_t *top;	/* The node-local topology struct */
+    t_inputrec      ir;		            /* input record */
+    gmx_mtop_t      mtop;	            /* topology */
+    gmx_localtop_t *top;	            /* The node-local topology struct */
     t_fcdata        fcd;
-    t_commrec      *cr;
-    t_graph        *g;
+
     int             ntopatoms, natoms;
+    int             ePBC;
     t_trxstatus    *status;
-    t_drmsd_data   *ddat_head=NULL, *ddat, *exdd, *exhead;
+    t_drmsd_data   *ddat_head, *ddat;
     real            t;
     rvec           *x;
     matrix          box;
-    t_pbc           pbc, *pbc_null;
+    t_pbc          *pbc;
     output_env_t    oenv;
     gmx_rmpbc_t     gpbc = NULL;
 
     /* for potential calculation */
-    real vpot;
-    rvec f[2*DIM*fcd.drmsdp.npairs], fshift[DIM*CENTRAL];
-    real lambda;
-    real dvdlambda = 0;
-    t_mdatoms *md;
+    real vpot, drmsd_ref, lambda, L1, dvdlambda = 0.0;
+    rvec  fshift[DIM*CENTRAL];
+    rvec *f = NULL;
     int *global_atom_index = 0;
 
     t_filenm        fnm[] = {
@@ -126,149 +130,100 @@ int gmx_drmsd(int argc, char *argv[])
     };
 
 #define NFILE asize(fnm)
-
-    cr  = init_par(&argc, &argv); /* communication between multiple nodes */
     CopyRight(stderr, argv[0]);
 
     /* parsing arguments PCA are common options like -b, -e, nicelevel
      * NFILE is the number of files, fnm is an array of filenames
-     * oenv is the output environment*/
+     * oenv is the output environment
+     */
     parse_common_args(&argc, argv, PCA_CAN_TIME | PCA_CAN_VIEW | PCA_BE_NICE,
                       NFILE, fnm, asize(pa), pa, asize(desc), desc, 0, NULL, &oenv);
 
-    read_tpxheader(ftp2fn(efTPX, NFILE, fnm), &header, FALSE, NULL, NULL);
-    snew(xtop, header.natoms); /* allocate memory for xtop vector */
-    read_tpx(ftp2fn(efTPX, NFILE, fnm), &ir, box, &ntopatoms, xtop, NULL, NULL, &mtop); // read topology from tpr file
+    /* read topology from tpr file */
+    ePBC = read_tpx(ftp2fn(efTPX, NFILE, fnm), &ir, box, &ntopatoms, NULL, NULL, NULL, &mtop);
 
-    lambda = ir.fepvals->all_lambda[ir.fepvals->init_fep_state][efptBONDED];
+    /* Read the lambda value from inputrec */
+    if ( ir.efep != efepNO ){
+        lambda = ir.fepvals->all_lambda[efptBONDED][ir.fepvals->init_fep_state];
+    }
+    else
+    {
+        lambda = 0.0;
+    }
+    L1 = 1.0 - lambda;
 
-    //fprintf(stderr,"\n\n bonded_lambda = %f\n\n",lambda);
+    /* generate local topology */
+    top = gmx_mtop_generate_local_top(&mtop, &ir);
 
+    /* Initialize the drmsd potential data structure in fcd
+     * and setting bIsREMD to false
+     */
+    init_drmsd_pot(stderr, &mtop, &ir, NULL, 0, &fcd, FALSE);
 
-    //fprintf(stderr,"drmsd reference is %f\n",ir.drmsd_ref);
-    //fprintf(stderr,"drmsd reference for state B is %f\n",ir.drmsd_refB);
-    //fprintf(stderr,"drmsd fc is %f\n",ir.drmsd_fc);
+    /* Calculate the lambda dependent reference drmsd */
+    drmsd_ref = L1 * fcd.drmsdp.rmsd_ref + lambda * fcd.drmsdp.rmsd_refB;
 
+    /* We need a dummy force vector for the ifunc call */
+    snew(f, mtop.natoms);
 
-    top = gmx_mtop_generate_local_top(&mtop, &ir); /* generate local topology */
+    /* Initialize first ddat structure */
+    snew(ddat_head, 1);
+    init_drmsd_data_elemnt(ddat_head);
+    ddat = ddat_head;
+
+    /* read number of atoms in system */
+    natoms = read_first_x(oenv, &status, ftp2fn(efTRX, NFILE, fnm), &t, &x, box);
 
     /* for periodic boundary conditions */
-    g        = NULL;
-    pbc_null = NULL;
-    if (ir.ePBC != epbcNONE)
+    if (ePBC != epbcNONE)
     {
-        if (ir.bPeriodicMols)
-        {
-            pbc_null = &pbc;
-        }
-        else
-        {
-            g = mk_graph(stderr, &top->idef, 0, mtop.natoms, FALSE, FALSE);
-        }
+        snew(pbc, 1);
     }
-
-    init_drmsd_pot(stderr, &mtop, &ir, cr, 0, &fcd, 0);
-
-    /* initialise first ddat structure */
-	snew(ddat_head,1);
-	init_drmsd_data_element(ddat_head);
-	ddat = ddat_head;
-
-    natoms = read_first_x(oenv, &status, ftp2fn(efTRX, NFILE, fnm), &t, &x, box); /* read number of atoms in system */
-
-    // Values from drmsd calculation
-    //fprintf(stderr, "fcd.drmsdp.rmsd     = %7f\n", fcd.drmsdp.rmsd);
-    //fprintf(stderr, "fcd.drmsdp.rmsd_ref = %7f\n", fcd.drmsdp.rmsd_ref);
-    //fprintf(stderr, "fcd.drmsdp.npairs   = %7d\n", fcd.drmsdp.npairs);
-    //fprintf(stderr, "fcd.drmsdp.fc       = %7f\n", fcd.drmsdp.fc);
-    //fprintf(stderr, "fcd.drmsdp.dt       = %7f\n", fcd.drmsdp.dt[0]);
-
-
-    if (ir.ePBC != epbcNONE)
+    else
     {
-        gpbc = gmx_rmpbc_init(&top->idef, ir.ePBC, natoms, box);
+        pbc = NULL;
     }
+    gpbc = gmx_rmpbc_init(&top->idef, ePBC, natoms, box);
 
     do
     {
-        //fprintf(stderr,"starting while %d\n",i);
-    	/* fprintf(stderr,"got time %f\n",t); */
-    	/* fprintf(stderr,"trxstatus->nxframe = %f\n",status->NATOMS); */
-    	/* fprintf(out,  "%.0f  %7d\n", t, status->xframe->x); */
-
-
-        if (ir.ePBC != epbcNONE)
+        /* Initialization for correct distance calculations */
+        if (pbc)
         {
-            if (ir.bPeriodicMols)
-            {
-                set_pbc(&pbc, ir.ePBC, box);
-            }
-            else
-            {
-                gmx_rmpbc(gpbc, natoms, box, x);
-            }
+            set_pbc(pbc, ePBC, box);
+            /* make molecules whole again */
+            gmx_rmpbc(gpbc, natoms, box, x);
         }
 
-        //fprintf(stderr,"calculating drmsd %d\n",i);
         calc_drmsd(top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms,
-        		top->idef.iparams, (const rvec*) x, pbc_null, &fcd, lambda);
-
-
-        /* //output of memory locations
-        fprintf(stderr,"0x%8x next \t 0x%8x t \t%f \t 0x%8x drmsd \t%f \t 0x%8x vpot \t%f\n",\
-        		ddat->next,ddat->t,ddat->t,ddat->drmsd,ddat->drmsd,ddat->vpot,ddat->vpot);
-        		*/
-
-        snew(ddat->next,1);
-        ddat = ddat->next;
-        init_drmsd_data_element(ddat);
+        		top->idef.iparams, (const rvec*) x, pbc, &fcd, lambda);
 
         ddat->drmsd = fcd.drmsdp.rmsd;
-        ddat->t = t;
-        ddat->vpot = if_drmsd_pot(fcd.drmsdp.npairs, top->idef.il[F_DRMSDP].iatoms,
-        		top->idef.iparams, (const rvec*) x, f, fshift, pbc_null, g,
+        ddat->t     = t;
+        ddat->vpot  = if_drmsd_pot(top->idef.il[F_DRMSDP].nr, top->idef.il[F_DRMSDP].iatoms,
+        		top->idef.iparams, (const rvec*) x, f, fshift, pbc, NULL,
         		lambda, &dvdlambda, NULL, &fcd, global_atom_index);
 
-        //output of entire list so far every iteration
-        /*t_drmsd_data *read_ddat = ddat_head->next;
-        read_ddat = ddat_head->next;
-    	while (read_ddat->next !=NULL){
-    		//fprintf(stderr, "%.0f \t %7f \t %7f \t%7f -- ddat_head\n", ddat_head->t, ddat_head->drmsd, fcd.drmsdp.rmsd_refB, ddat_head->vpot);
-    		fprintf(stderr, "%.0f \t %7f \t %7f \t%7f\n", read_ddat->t, read_ddat->drmsd, fcd.drmsdp.rmsd_refB, read_ddat->vpot);
-    		read_ddat=read_ddat->next;
-    	}*/
-
-        //fprintf(stderr,"%f \t %f \t %f\n",t,ddat->drmsd,ddat->vpot);
+        /* Extend the linked list */
+        snew(ddat->next, 1);
+        ddat = ddat->next;
+        init_drmsd_data_elemnt(ddat);
     }
     while (read_next_x(oenv, status, &t, natoms, x, box));
 
-    //dump output to dmrsd.xvg
-    dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), oenv, ddat_head->next, fcd.drmsdp.rmsd_ref);
-
-    /* output to screen
-    ddat = ddat_head;
-    do
-    {
-        fprintf(stderr,"ddat->t = %f; \t ddat->drmsd = %f; \t ddat->vpot= %f \n",
-        		ddat->t,ddat->drmsd,ddat->vpot);
-        ddat = ddat->next;
-    } while(ddat->next!=NULL);
-    */
-
-
-
-    close_trj(status);
-    if (ir.ePBC != epbcNONE)
+    if (ePBC != epbcNONE)
     {
         gmx_rmpbc_done(gpbc);
     }
 
+    close_trj(status);
+
+    /* dump output to dmrsd.xvg */
+    dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), oenv, ddat_head, drmsd_ref);
+
     ffclose(out);
 
     gmx_finalize_par();
-
-
-    fprintf(stderr,"\nit.works\n");
 
     thanx(stderr);
 
