@@ -60,6 +60,15 @@ typedef struct t_drmsd_data
     struct t_drmsd_data *next;
 } t_drmsd_data;
 
+typedef struct t_drmsd_head
+{
+	real drmsd_ref;
+	real f_const;
+	real lambda;
+	struct t_drmsd_data *next;
+
+}t_drmsd_head;
+
 void init_drmsd_data_elemnt(t_drmsd_data *ddat)
 {
 	ddat->next  = NULL;
@@ -68,54 +77,30 @@ void init_drmsd_data_elemnt(t_drmsd_data *ddat)
 	ddat->vpot  = 0;
 }
 
-void dump_drmsd_xvg(const char *filename, const output_env_t oenv,
-        t_drmsd_data *ddat_head, real drmsd_ref)
+void init_drmsd_head(t_drmsd_head *dhead)
 {
-#define NFILE asize(fnm)
-    FILE *out = NULL;
-
-    /* open output file */
-    out = xvgropen(filename, "Read variable", "Time (ps)", "dRMSD (nm)", oenv);
-
-    t_drmsd_data *ddat = ddat_head;
-    while (ddat->next != NULL)
-    {
-        fprintf(out, "%12.7f %12.7f %12.7f %12.7f\n", ddat->t, ddat->drmsd,
-                ddat->vpot, drmsd_ref);
-        ddat = ddat->next;
-    }
-
-    ffclose(out);
+	dhead->next = NULL;
+	dhead->drmsd_ref = 0;
+	dhead->f_const = 0;
+	dhead->lambda = 0;
 }
-
-
-int gmx_drmsd(int argc, char *argv[])
+void read_fileset(int set_number, char *ftprnm,
+				  char *ftrxnm, output_env_t oenv,
+				  t_drmsd_head *ddat_head)
 {
-    const char     *desc[] = {
-        "[TT]g_drmsd[tt] computes distances and potentials for the distanceRMSD.",
-        "If given a .gro coordinate and index file it calculates the reference ",
-        "distances and writes them to a topology"
-    };
-    t_pargs         pa[]      = {
-
-    };
-
-    FILE           *out = NULL;
     t_inputrec      ir;		            /* input record */
     gmx_mtop_t      mtop;	            /* topology */
     gmx_localtop_t *top;	            /* The node-local topology struct */
     t_fcdata        fcd;
-
-    int             ntopatoms, natoms;
-    int             ePBC;
-    t_trxstatus    *status;
-    t_drmsd_data   *ddat_head, *ddat;
     real            t;
     rvec           *x;
     matrix          box;
     t_pbc          *pbc;
-    output_env_t    oenv;
     gmx_rmpbc_t     gpbc = NULL;
+    t_trxstatus    *status;
+    int             ntopatoms, natoms;
+    int             ePBC;
+    t_drmsd_data   *ddat;
 
     /* for potential calculation */
     real vpot, drmsd_ref, lambda, L1, dvdlambda = 0.0;
@@ -123,24 +108,11 @@ int gmx_drmsd(int argc, char *argv[])
     rvec *f = NULL;
     int *global_atom_index = 0;
 
-    t_filenm        fnm[] = {
-    	{ efTPX, "-s", NULL, ffREAD },
-    	{ efTRX, "-f", NULL, ffREAD },
-    	{ efXVG, "-o",  "drmsd", ffWRITE }
-    };
-
-#define NFILE asize(fnm)
-    CopyRight(stderr, argv[0]);
-
-    /* parsing arguments PCA are common options like -b, -e, nicelevel
-     * NFILE is the number of files, fnm is an array of filenames
-     * oenv is the output environment
-     */
-    parse_common_args(&argc, argv, PCA_CAN_TIME | PCA_CAN_VIEW | PCA_BE_NICE,
-                      NFILE, fnm, asize(pa), pa, asize(desc), desc, 0, NULL, &oenv);
 
     /* read topology from tpr file */
-    ePBC = read_tpx(ftp2fn(efTPX, NFILE, fnm), &ir, box, &ntopatoms, NULL, NULL, NULL, &mtop);
+    //ePBC = read_tpx(ftp2fn(efTPX, NFILE, fnm), &ir, box, &ntopatoms, NULL, NULL, NULL, &mtop);
+    ePBC = read_tpx(ftprnm, &ir, box, &ntopatoms, NULL, NULL, NULL, &mtop);
+
 
     /* Read the lambda value from inputrec */
     if ( ir.efep != efepNO ){
@@ -166,13 +138,18 @@ int gmx_drmsd(int argc, char *argv[])
     /* We need a dummy force vector for the ifunc call */
     snew(f, mtop.natoms);
 
+    /* save drmsd run parameters */
+    ddat_head->f_const = fcd.drmsdp.fc;
+    ddat_head->lambda = lambda;
+    ddat_head->drmsd_ref = drmsd_ref;
+
     /* Initialize first ddat structure */
-    snew(ddat_head, 1);
-    init_drmsd_data_elemnt(ddat_head);
-    ddat = ddat_head;
+    snew(ddat, 1);
+    init_drmsd_data_elemnt(ddat);
+    ddat_head->next = ddat;
 
     /* read number of atoms in system */
-    natoms = read_first_x(oenv, &status, ftp2fn(efTRX, NFILE, fnm), &t, &x, box);
+    natoms = read_first_x(oenv, &status, ftrxnm, &t, &x, box);
 
     /* for periodic boundary conditions */
     if (ePBC != epbcNONE)
@@ -217,11 +194,96 @@ int gmx_drmsd(int argc, char *argv[])
     }
 
     close_trj(status);
+}
 
-    /* dump output to dmrsd.xvg */
-    dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), oenv, ddat_head, drmsd_ref);
+void dump_drmsd_xvg(const char *filename, int file_num, const output_env_t oenv,
+        t_drmsd_head *d_head)
+{
+#define NFILE asize(fnm)
+    FILE *out = NULL;
+    char buf[1024];
+    sprintf(buf,"%.*s_%d.xvg",(int)(strlen(filename)-4),filename,file_num);
+
+    /* open output file */
+    out = xvgropen(buf, "distance RMSD", "Time (ps)", "dRMSD (nm)", oenv);
+    fprintf(out,"@ subtitle \"lambda = %.3f, reference dRMSD = %.4f nm, force constant = %6.f kJ/mol\"\n",
+    		d_head->lambda, d_head->drmsd_ref, d_head->f_const);
+    fprintf(out,"@ legend on\n");
+    fprintf(out,"@ legend box on\n");
+    fprintf(out,"@ s0 legend \"distance RMSD\"\n");
+    fprintf(out,"@ s1 legend \"dRMSD potential\"\n");
+
+    t_drmsd_data *ddat = d_head->next;
+    while (ddat->next != NULL)
+    {
+        fprintf(out, "%12.7f %12.7f %12.7f\n", ddat->t, ddat->drmsd,
+                ddat->vpot);
+        ddat = ddat->next;
+    }
 
     ffclose(out);
+}
+
+
+int gmx_drmsd(int argc, char *argv[])
+{
+    const char     *desc[] = {
+        "[TT]g_drmsd[tt] computes distances and potentials for the distanceRMSD.",
+        "If given a .gro coordinate and index file it calculates the reference ",
+        "distances and writes them to a topology"
+    };
+    t_pargs         pa[]      = {
+
+    };
+    FILE           *out = NULL;
+    int 			ntrxfile = 0, ntprfile = 0;
+    char       	  **ftrxnms, **ftprnms;
+    t_drmsd_head  **ddat_head;
+
+    output_env_t    oenv;
+
+    t_filenm        fnm[] = {
+    	{ efTPX, "-s", NULL, ffOPTRDMULT },
+    	{ efTRX, "-f", NULL,  ffOPTRDMULT},
+    	{ efXVG, "-o",  "drmsd", ffWRITE }
+    };
+
+#define NFILE asize(fnm)
+    CopyRight(stderr, argv[0]);
+
+    /* parsing arguments PCA are common options like -b, -e, nicelevel
+     * NFILE is the number of files, fnm is an array of filenames
+     * oenv is the output environment
+     */
+    parse_common_args(&argc, argv, PCA_CAN_TIME | PCA_CAN_VIEW | PCA_BE_NICE,
+                      NFILE, fnm, asize(pa), pa, asize(desc), desc, 0, NULL, &oenv);
+
+    /* get names of trx files */
+    if (opt2bSet("-f", NFILE, fnm))
+    {
+        ntrxfile = opt2fns(&ftrxnms, "-f", NFILE, fnm);
+    }
+    /* get names of tpr files */
+    if (opt2bSet("-s", NFILE, fnm))
+    {
+        ntprfile = opt2fns(&ftprnms, "-s", NFILE, fnm);
+    }
+    //dummy index for numerating tpr files
+    int i=0;
+
+    snew(ddat_head,ntprfile);
+
+    /* read trajectories */
+    for(i = 0; i < ntrxfile; i++){
+		snew(ddat_head[i],1);
+		init_drmsd_head(ddat_head[i]);
+		read_fileset(i, ftprnms[i], ftrxnms[i], oenv, ddat_head[i]);
+    }
+
+    /* dump output to dmrsd.xvg_i */
+    for(i = 0; i < ntrxfile; i++){
+    	dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), i, oenv, ddat_head[i]);
+    }
 
     gmx_finalize_par();
 
