@@ -84,6 +84,14 @@ void init_drmsd_head(t_drmsd_head *dhead)
 	dhead->f_const = 0;
 	dhead->lambda = 0;
 }
+
+void read_fnid(char* fn, char *fn_id){
+	/*find file identifier after _ and before .xtc in filename */
+	char us[8] = "_";
+    strcpy(fn_id,strrchr(fn, *us)+1);
+	sprintf(fn_id,"%.*s",(int)(strlen(fn_id))-4,fn_id);
+}
+
 void read_fileset(int set_number, char *ftprnm,
 				  char *ftrxnm, output_env_t oenv,
 				  t_drmsd_head *ddat_head)
@@ -196,17 +204,17 @@ void read_fileset(int set_number, char *ftprnm,
     close_trj(status);
 }
 
-void dump_drmsd_xvg(const char *filename, int file_num, const output_env_t oenv,
+void dump_drmsd_xvg(const char *filename, char *f_id, const output_env_t oenv,
         t_drmsd_head *d_head)
 {
 #define NFILE asize(fnm)
     FILE *out = NULL;
     char buf[1024];
-    sprintf(buf,"%.*s_%d.xvg",(int)(strlen(filename)-4),filename,file_num);
+    sprintf(buf,"%.*s_%s.xvg",(int)(strlen(filename)-4),filename,f_id);
 
-    /* open output file */
+    /* open output file and write header lines */
     out = xvgropen(buf, "distance RMSD", "Time (ps)", "dRMSD (nm)", oenv);
-    fprintf(out,"@ subtitle \"lambda = %.3f, reference dRMSD = %.4f nm, force constant = %6.f kJ/mol\"\n",
+    fprintf(out,"@ subtitle \"lambda = %.3f, reference dRMSD = %.4f nm, force constant = %6.f kJ/mol/nm^2\"\n",
     		d_head->lambda, d_head->drmsd_ref, d_head->f_const);
     fprintf(out,"@ legend on\n");
     fprintf(out,"@ legend box on\n");
@@ -224,22 +232,43 @@ void dump_drmsd_xvg(const char *filename, int file_num, const output_env_t oenv,
     ffclose(out);
 }
 
+void free_ddata(t_drmsd_head **ddat_head, int nfilesets){
+	int i;
+	t_drmsd_data *ddat;
+	t_drmsd_data *ddat_del;
+	for(i = 0; i < nfilesets; i++){
+		ddat = ddat_head[i]->next;
+		while(ddat->next != NULL){
+			ddat_del = ddat;
+			ddat = ddat-> next;
+			sfree(ddat_del);
+		}
+		ddat_del = ddat;
+		sfree(ddat_del);
+	}
+	sfree(ddat_head);
+}
 
 int gmx_drmsd(int argc, char *argv[])
 {
     const char     *desc[] = {
         "[TT]g_drmsd[tt] computes distances and potentials for the distanceRMSD.",
         "If given a .gro coordinate and index file it calculates the reference ",
-        "distances and writes them to a topology"
+        "distances and writes them to a topology [not implemented yet]",
+        "-o defines a filename, default is drmsd.xvg",
+        "	if multiple files are given, the filename is extended by the",
+        "	file identifier of the trajectory after the last underscore and",
+        "	excluding the file extension."
     };
     t_pargs         pa[]      = {
-
     };
     FILE           *out = NULL;
     int 			ntrxfile = 0, ntprfile = 0;
+    int 			i;
     char       	  **ftrxnms, **ftprnms;
+    char 		  **file_ids;
+    gmx_bool		bf_given_index;
     t_drmsd_head  **ddat_head;
-
     output_env_t    oenv;
 
     t_filenm        fnm[] = {
@@ -268,24 +297,40 @@ int gmx_drmsd(int argc, char *argv[])
     {
         ntprfile = opt2fns(&ftprnms, "-s", NFILE, fnm);
     }
-    //dummy index for numerating tpr files
-    int i=0;
 
-    snew(ddat_head,ntprfile);
+    if(ntprfile != ntrxfile){
+    	fprintf(stderr,"Error: number of tpr files does not match number of trajectories.\n");
+    	return 0;
+    }
+
+    /* initialize array of data heads */
+    snew(ddat_head,ntrxfile);
+    /*initiallize array of file identifiers */
+    snew(file_ids,ntrxfile);
 
     /* read trajectories */
     for(i = 0; i < ntrxfile; i++){
+
 		snew(ddat_head[i],1);
 		init_drmsd_head(ddat_head[i]);
+
+		snew(file_ids[i],1);
+	    read_fnid(ftrxnms[i],file_ids[i]);
+
 		read_fileset(i, ftprnms[i], ftrxnms[i], oenv, ddat_head[i]);
+
+		dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), file_ids[i], oenv, ddat_head[i]);
+
     }
 
     /* dump output to dmrsd.xvg_i */
-    for(i = 0; i < ntrxfile; i++){
-    	dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), i, oenv, ddat_head[i]);
-    }
+//    for(i = 0; i < ntrxfile; i++){
+//    	dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), file_ids[i], oenv, ddat_head[i]);
+//    }
 
     gmx_finalize_par();
+
+    free_ddata(ddat_head, ntrxfile);
 
     thanx(stderr);
 
