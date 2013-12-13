@@ -53,6 +53,7 @@
 #include "names.h"
 
 #include "drmsdpot.h"
+#include "gmx_wham.h"
 
 typedef struct t_drmsd_data
 {
@@ -85,11 +86,19 @@ void init_drmsd_head(t_drmsd_head *dhead)
 	dhead->lambda = 0;
 }
 
-void read_fnid(char* fn, char *fn_id){
-	/*find file identifier after _ and before .xtc in filename */
-	char us[8] = "_";
-    strcpy(fn_id,strrchr(fn, *us)+1);
-	sprintf(fn_id,"%.*s",(int)(strlen(fn_id))-4,fn_id);
+void read_fid(char* fid, char* fn){
+	/*find file identifier after the last _
+	 * and clear file type (.xtc) of filename */
+
+	if(strchr(fn, '_')){
+		char *fid_tmp;
+		snew(fid_tmp,STRLEN);
+		strcpy(fid_tmp,strrchr(fn, '_')+1);
+		sprintf(fid   ,"_%.*s",(int)(strlen(fid_tmp)-4),fid_tmp);
+	}
+	else {
+		fid = "";
+	}
 }
 
 void read_fileset(int set_number, char *ftprnm,
@@ -209,8 +218,8 @@ void dump_drmsd_xvg(const char *filename, char *f_id, const output_env_t oenv,
 {
 #define NFILE asize(fnm)
     FILE *out = NULL;
-    char buf[1024];
-    sprintf(buf,"%.*s_%s.xvg",(int)(strlen(filename)-4),filename,f_id);
+    char buf[STRLEN];
+    sprintf(buf,"%.*s%s.xvg",(int)(strlen(filename)-4),filename,f_id);
 
     /* open output file and write header lines */
     out = xvgropen(buf, "distance RMSD", "Time (ps)", "dRMSD (nm)", oenv);
@@ -230,6 +239,11 @@ void dump_drmsd_xvg(const char *filename, char *f_id, const output_env_t oenv,
     }
 
     ffclose(out);
+}
+
+void do_wham(const output_env_t oenv, int nwin, t_drmsd_head **dd_head){
+    t_UmbrellaHeader         header;
+    t_UmbrellaWindow        *window;
 }
 
 void free_ddata(t_drmsd_head **ddat_head, int nfilesets){
@@ -314,19 +328,20 @@ int gmx_drmsd(int argc, char *argv[])
 		snew(ddat_head[i],1);
 		init_drmsd_head(ddat_head[i]);
 
-		snew(file_ids[i],1);
-	    read_fnid(ftrxnms[i],file_ids[i]);
+		snew(file_ids[i],STRLEN);
+		read_fid(file_ids[i],ftrxnms[i]);
+		fprintf(stderr,"returned = %s\n",file_ids[i]);
 
+		fprintf(stderr,"file_ids[i] got = %s\n",file_ids[i]);
 		read_fileset(i, ftprnms[i], ftrxnms[i], oenv, ddat_head[i]);
-
-		dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), file_ids[i], oenv, ddat_head[i]);
-
     }
 
     /* dump output to dmrsd.xvg_i */
-//    for(i = 0; i < ntrxfile; i++){
-//    	dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), file_ids[i], oenv, ddat_head[i]);
-//    }
+    for(i = 0; i < ntrxfile; i++){
+    	dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), file_ids[i], oenv, ddat_head[i]);
+    }
+
+    //do_wham(oenv, ntrxfile, ddat_head);
 
     gmx_finalize_par();
 
