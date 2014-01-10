@@ -53,7 +53,7 @@
 #include "names.h"
 
 #include "drmsdpot.h"
-#include "gmx_wham.h"
+//#include "gmx_wham.h"
 
 typedef struct t_drmsd_data
 {
@@ -242,8 +242,8 @@ void dump_drmsd_xvg(const char *filename, char *f_id, const output_env_t oenv,
 }
 
 void do_wham(const output_env_t oenv, int nwin, t_drmsd_head **dd_head){
-    t_UmbrellaHeader         header;
-    t_UmbrellaWindow        *window;
+//    t_UmbrellaHeader         header;
+//    t_UmbrellaWindow        *window;
 }
 
 void free_ddata(t_drmsd_head **ddat_head, int nfilesets){
