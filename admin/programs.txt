@@ -61,6 +61,7 @@ g_cluster|clusters structures
 g_confrms|fits two structures and calculates the rmsd 
 g_rms|calculates rmsd's with a reference structure and rmsd matrices
 g_rmsf|calculates atomic fluctuations
+g_drmsd|calculates distance rmsds of atom groups
 END
 
 HEAD|Distances in structures over time
