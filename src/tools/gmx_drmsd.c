@@ -88,7 +88,7 @@ void init_drmsd_head(t_drmsd_head *dhead)
 
 void read_fid(char* fid, char* fn){
 	/*find file identifier after the last _
-	 * and clear file type (.xtc) of filename */
+	 * and clear file type (e.g. .xtc) of filename */
 
 	if(strchr(fn, '_')){
 		char *fid_tmp;
@@ -117,6 +117,7 @@ void read_fileset(int set_number, char *ftprnm,
     t_trxstatus    *status;
     int             ntopatoms, natoms;
     int             ePBC;
+    char 		   *file_id_tpr, *file_id_trx;
     t_drmsd_data   *ddat;
 
     /* for potential calculation */
@@ -125,6 +126,17 @@ void read_fileset(int set_number, char *ftprnm,
     rvec *f = NULL;
     int *global_atom_index = 0;
 
+
+    /* check if the tpr file number matches the trajectory file number */
+	snew(file_id_tpr,STRLEN);
+	snew(file_id_trx,STRLEN);
+	read_fid(file_id_tpr,ftprnm);
+	read_fid(file_id_trx,ftrxnm);
+
+	if (strcmp(file_id_tpr, file_id_trx) != 0){
+        gmx_fatal(FARGS,
+                "input files %s and %s mismatch in run number (%s != %s)\n",ftprnm, ftrxnm,file_id_tpr, file_id_trx);
+	}
 
     /* read topology from tpr file */
     //ePBC = read_tpx(ftp2fn(efTPX, NFILE, fnm), &ir, box, &ntopatoms, NULL, NULL, NULL, &mtop);
@@ -270,9 +282,10 @@ int gmx_drmsd(int argc, char *argv[])
         "If given a .gro coordinate and index file it calculates the reference ",
         "distances and writes them to a topology [not implemented yet]",
         "-o defines a filename, default is drmsd.xvg",
-        "	if multiple files are given, the filename is extended by the",
-        "	file identifier of the trajectory after the last underscore and",
-        "	excluding the file extension."
+        " if multiple files are given, trajectories and tpr files have to be given ",
+        " in the right order with the same number after the last underscore. ",
+        " the output filename is extended by the file identifier"
+        " of the trajectory file, after the last underscore and excluding the file extension."
     };
     t_pargs         pa[]      = {
     };
@@ -330,9 +343,7 @@ int gmx_drmsd(int argc, char *argv[])
 
 		snew(file_ids[i],STRLEN);
 		read_fid(file_ids[i],ftrxnms[i]);
-		fprintf(stderr,"returned = %s\n",file_ids[i]);
 
-		fprintf(stderr,"file_ids[i] got = %s\n",file_ids[i]);
 		read_fileset(i, ftprnms[i], ftrxnms[i], oenv, ddat_head[i]);
     }
 
