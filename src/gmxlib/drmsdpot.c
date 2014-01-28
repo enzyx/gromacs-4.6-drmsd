@@ -100,7 +100,7 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
     if (cr && PAR(cr) && !bPartDecomp)
     {
         const char *notestr =
-                "NOTE: atoms involved in distance rmsd potential restraints should be "
+                "NOTE: atoms involved in distance RMSD potential restraints should be "
                         "within the longest cut-off distance, if this is not the "
                         "case mdrun generates a fatal error, in that case use "
                         "particle decomposition (mdrun option -pd)";
@@ -119,13 +119,13 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
             if (fplog)
             {
                 fprintf(fplog,
-                        "\nWARNING: Can not write distance rmsd restraint data to "
+                        "\nWARNING: Can not write distance RMSD restraint data to "
                                 "energy file with domain decomposition\n\n");
             }
             if (MASTER(cr))
             {
                 fprintf(stderr,
-                        "\nWARNING: Can not write distance rmsd restraint data to "
+                        "\nWARNING: Can not write distance RMSD restraint data to "
                                 "energy file with domain decomposition\n");
             }
             ir->nstdrmsdpout = 0;
@@ -153,6 +153,14 @@ void calc_drmsd(int nfa, const t_iatom forceatoms[],
     t_drmsdpotdata *drmsdpotdata;
 
     drmsdpotdata = &(fcd->drmsdp);
+
+    /* This check should not be necessary but to prevent things */
+    if (drmsdpotdata->npairs != (int)(nfa/3.0)){
+        gmx_fatal(FARGS,
+                "Number of distance RMSD pairs differs from expected!\n"
+                "This is most likely a parallelization issue.\n"
+                "Try using OpenMP threads instead of MPI or particle decomposition.\n");
+    }
 
     dRMSD   = 0.0;
     dvdlsum = 0.0;
