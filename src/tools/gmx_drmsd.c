@@ -361,4 +361,5 @@ int gmx_drmsd(int argc, char *argv[])
     thanx(stderr);
 
 	return 0;
+    /* test */
 }
