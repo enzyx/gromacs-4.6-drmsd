@@ -345,12 +345,11 @@ int gmx_drmsd(int argc, char *argv[])
 		read_fid(file_ids[i],ftrxnms[i]);
 
 		read_fileset(i, ftprnms[i], ftrxnms[i], oenv, ddat_head[i]);
-    }
 
-    /* dump output to dmrsd.xvg_i */
-    for(i = 0; i < ntrxfile; i++){
+	    /* dump output to dmrsd.xvg_i */
     	dump_drmsd_xvg(opt2fn("-o", NFILE, fnm), file_ids[i], oenv, ddat_head[i]);
     }
+
 
     //do_wham(oenv, ntrxfile, ddat_head);
 
