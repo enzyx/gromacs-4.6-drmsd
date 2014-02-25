@@ -217,7 +217,7 @@ real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
     atom_id ai, aj;
     rvec dx;
     ivec dt;
-    int fa, type, ki = CENTRAL, m;
+    int fa, type, ki = CENTRAL, m, N;
     real fc, vtot, vpair, dvdlpair, drmsd_ref, drmsd_refB, drmsd, d, dref, drefB, f_scal, fij, ffc;
     real L1;
     t_drmsdpotdata *drmsdpotdata;
@@ -229,6 +229,7 @@ real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
     drmsd_ref  = drmsdpotdata->rmsd_ref;
     drmsd_refB = drmsdpotdata->rmsd_refB;
     drmsd      = drmsdpotdata->rmsd;
+    N          = drmsdpotdata->npairs;
 
     L1 = 1.0 - lambda;
 
@@ -238,7 +239,7 @@ real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
     vtot     = 0;
 
     /* Calculate force prefactor outside the loop */
-    ffc = -fc / (npairs / 3.) * (drmsd - L1 * drmsd_ref - lambda * drmsd_refB) / (drmsd);
+    ffc = -fc / N * (drmsd - L1 * drmsd_ref - lambda * drmsd_refB) / drmsd;
 
     /* Loop over drmsd pairs */
     for (fa = 0; fa < npairs; fa += 3)
