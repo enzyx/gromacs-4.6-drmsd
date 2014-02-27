@@ -71,6 +71,7 @@
 #include "md_support.h"
 #include "mdrun.h"
 #include "sim_util.h"
+#include "drmsdpot.h"
 
 typedef struct gmx_global_stat
 {
@@ -457,6 +458,7 @@ gmx_mdoutf_t *init_mdoutf(int nfile, const t_filenm fnm[], int mdrun_flags,
     of->fp_ene   = NULL;
     of->fp_xtc   = NULL;
     of->fp_dhdl  = NULL;
+    of->fp_drmsd = NULL;
     of->fp_field = NULL;
 
     of->eIntegrator     = ir->eI;
@@ -510,6 +512,11 @@ gmx_mdoutf_t *init_mdoutf(int nfile, const t_filenm fnm[], int mdrun_flags,
             }
         }
 
+        /* Open the drmsd output files */
+        if (ir->bDrmsdPot && ir->nstdrmsdpout > 0){
+            of->fp_drmsd = open_drmsd_out(opt2fn("-drmsd", nfile, fnm), ir, oenv, bAppendFiles);
+        }
+
         if (opt2bSet("-field", nfile, fnm) &&
             (ir->ex[XX].n || ir->ex[YY].n || ir->ex[ZZ].n))
         {
@@ -547,6 +554,10 @@ void done_mdoutf(gmx_mdoutf_t *of)
     if (of->fp_dhdl != NULL)
     {
         gmx_fio_fclose(of->fp_dhdl);
+    }
+    if (of->fp_drmsd != NULL)
+    {
+        gmx_fio_fclose(of->fp_drmsd);
     }
     if (of->fp_field != NULL)
     {

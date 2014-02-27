@@ -1,7 +1,7 @@
 /*
  * This file is part of the GROMACS molecular simulation package.
  *
- * Copyright (c) 2013, by Rainer Reisenauer, Manuel Luitz
+ * Copyright (c) 2013, by Rainer Bomblies, Manuel Luitz
  *
  * GROMACS is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -234,19 +234,13 @@ void dump_drmsd_xvg(const char *filename, char *f_id, const output_env_t oenv,
     sprintf(buf,"%.*s%s.xvg",(int)(strlen(filename)-4),filename,f_id);
 
     /* open output file and write header lines */
-    out = xvgropen(buf, "distance RMSD", "Time (ps)", "dRMSD (nm)", oenv);
-    fprintf(out,"@ subtitle \"lambda = %.3f, reference dRMSD = %.4f nm, force constant = %6.f kJ/mol/nm^2\"\n",
-    		d_head->lambda, d_head->drmsd_ref, d_head->f_const);
-    fprintf(out,"@ legend on\n");
-    fprintf(out,"@ legend box on\n");
-    fprintf(out,"@ s0 legend \"distance RMSD\"\n");
-    fprintf(out,"@ s1 legend \"dRMSD potential\"\n");
+    out = gmx_fio_fopen(buf, "w+");
+    print_drmsd_header(out, oenv, d_head->lambda, d_head->drmsd_ref, d_head->f_const);
 
     t_drmsd_data *ddat = d_head->next;
     while (ddat->next != NULL)
     {
-        fprintf(out, "%12.7f %12.7f %12.7f\n", ddat->t, ddat->drmsd,
-                ddat->vpot);
+        print_drmsd_data(out, ddat->t, ddat->drmsd, ddat->vpot);
         ddat = ddat->next;
     }
 

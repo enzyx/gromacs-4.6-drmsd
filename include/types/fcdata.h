@@ -52,7 +52,7 @@ typedef struct {
     real     dr_fc;        /* Force constant for disres,                       *
                             * which is multiplied by a (possibly)              *
                             * different factor for each restraint              */
-    real  dr_tau;          /* Time constant for disres		          */
+    real  dr_tau;          /* Time constant for disres		                   */
     real  ETerm;           /* multiplication factor for time averaging         */
     real  ETerm1;          /* 1 - ETerm1                                       */
     real  exp_min_t_tau;   /* Factor for slowly switching on the force         */
@@ -73,7 +73,7 @@ typedef struct {
     real      fc;            /* Force constant for the restraints                  */
     real      edt;           /* Multiplication factor for time averaging           */
     real      edt_1;         /* 1 - edt                                            */
-    real      exp_min_t_tau; /* Factor for slowly switching on the force         */
+    real      exp_min_t_tau; /* Factor for slowly switching on the force           */
     int       nr;            /* The number of orientation restraints               */
     int       nex;           /* The number of experiments                          */
     int       nref;          /* The number of atoms for the fit                    */
@@ -101,13 +101,15 @@ typedef struct {
 
 /* Distance RMSD Potential stuff */
 typedef struct {
-    real      fc;            /* Force constant for the rmsd potential               */
-    real      rmsd_ref;      /* The reference rmsd */
-    real      rmsd_refB;     /* State B reference distance rmsd */
-    int	      npairs;        /* The number of atom pairs accounting to the rmsd potential */
-    real      rmsd;          /* The calculated instantaneous rmsd                   */
-    real      dvdl;          /* The derivative of drmsd potential over lambda */
-    real     *dt;            /* The calculated instantaneous distances              */
+    real      fc;            /* Force constant for the drmsd potential             */
+    real      rmsd_ref;      /* The reference drmsd                                */
+    real      rmsd_refB;     /* State B reference distance drmsd                   */
+    int	      npairs;        /* The number of atom pairs accounting to the drmsd   *
+                              * potential                                          */
+    real      rmsd;          /* The calculated instantaneous drmsd                 */
+    real      dvdl;          /* The derivative of drmsd potential over lambda      */
+    real      vpot;          /* The potential energy of drmsd potential            */
+    real     *dt;            /* The calculated instantaneous distances             */
 } t_drmsdpotdata;
 
 /*

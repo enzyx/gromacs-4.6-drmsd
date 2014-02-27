@@ -67,6 +67,7 @@
 #include "ionize.h"
 #include "disre.h"
 #include "orires.h"
+#include "drmsdpot.h"
 #include "pme.h"
 #include "mdatoms.h"
 #include "repl_ex.h"
@@ -2022,6 +2023,9 @@ double do_md(FILE *fplog, t_commrec *cr, int nfile, const t_filenm fnm[],
             if (ir->ePull != epullNO)
             {
                 pull_print_output(ir->pull, step, t);
+            }
+            if (ir->bDrmsdPot && do_per_step(step, ir->nstdrmsdpout)){
+                print_drmsd_data(outf->fp_drmsd, t, fcd->drmsdp.rmsd, fcd->drmsdp.vpot);
             }
 
             if (do_per_step(step, ir->nstlog))

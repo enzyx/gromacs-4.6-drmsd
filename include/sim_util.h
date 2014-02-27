@@ -63,6 +63,7 @@ typedef struct {
     int         elamstats;
     int         simulation_part;
     FILE       *fp_dhdl;
+    FILE       *fp_drmsd;
     FILE       *fp_field;
 } gmx_mdoutf_t;
 

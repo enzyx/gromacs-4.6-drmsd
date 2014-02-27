@@ -1,7 +1,7 @@
 /*
  * This file is part of the GROMACS molecular simulation package.
  *
- * Copyright (c) 2013, by Manuel Luitz
+ * Copyright (c) 2013, by Manuel Luitz, Rainer Bomlies
  *
  * GROMACS is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -36,6 +36,24 @@
 /*
  * Implementation of the distance rmsd restraint potential function
  */
+
+/*
+ * Create header for drmsd output file
+ */
+void print_drmsd_header(FILE *fp, const output_env_t oenv, real lambda,
+        real drmsd_ref, real f_const);
+
+/*
+ * Print the drmsd data to output file
+ */
+void print_drmsd_data(FILE *fp, real time, real drmsd, real vpot);
+
+/*
+ * Open a drmsd output file
+ */
+FILE *open_drmsd_out(const char *fn, const t_inputrec *ir,
+                 const output_env_t oenv, gmx_bool append);
+
 
 /*
  * Setup

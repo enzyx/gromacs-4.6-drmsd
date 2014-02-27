@@ -377,6 +377,7 @@ int cmain(int argc, char *argv[])
         { efEDR, "-e",      "ener",     ffWRITE },
         { efLOG, "-g",      "md",       ffWRITE },
         { efXVG, "-dhdl",   "dhdl",     ffOPTWR },
+        { efXVG, "-drmsd",  "drmsd",    ffOPTWR },
         { efXVG, "-field",  "field",    ffOPTWR },
         { efXVG, "-table",  "table",    ffOPTRD },
         { efXVG, "-tabletf", "tabletf",    ffOPTRD },

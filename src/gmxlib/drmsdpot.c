@@ -1,7 +1,7 @@
 /*
  * This file is part of the GROMACS molecular simulation package.
  *
- * Copyright (c) 2013, by Manuel Luitz
+ * Copyright (c) 2013, by Manuel Luitz, Rainer Bomblies
  *
  * GROMACS is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -43,8 +43,64 @@
 #include "smalloc.h"
 #include "copyrite.h"
 #include "pbc.h"
+#include "xvgr.h"
+#include "gmxfio.h"
 
 #include "names.h"
+
+void print_drmsd_header(FILE *fp, const output_env_t oenv, real lambda,
+        real drmsd_ref, real f_const)
+{
+    /* open output file and write header lines */
+    xvgr_header(fp, "distance RMSD", "Time (ps)", "dRMSD (nm)", exvggtXNY,
+            oenv);
+
+    fprintf(fp, "@ subtitle \"lambda = %.3f, reference dRMSD = %.4f nm, "
+            "force constant = %6.f kJ/mol/nm^2\"\n", lambda, drmsd_ref,
+            f_const);
+    fprintf(fp, "@ legend on\n");
+    fprintf(fp, "@ legend box on\n");
+    fprintf(fp, "@ s0 legend \"distance RMSD\"\n");
+    fprintf(fp, "@ s1 legend \"dRMSD potential\"\n");
+}
+
+void print_drmsd_data(FILE *fp, real time, real drmsd, real vpot){
+    fprintf(fp, "%12.4f %12.7f %12.7f\n", time, drmsd, vpot);
+}
+
+/* Initialize I/O */
+extern FILE *open_drmsd_out(const char *fn, const t_inputrec *ir,
+        const output_env_t oenv, gmx_bool append)
+{
+    FILE *fp;
+    real lambda, L1, drmsd_ref;
+
+    /* Read the lambda value from inputrec */
+    if ( ir->efep != efepNO ){
+        lambda = ir->fepvals->all_lambda[efptBONDED][ir->fepvals->init_fep_state];
+    }
+    else
+    {
+        lambda = 0.0;
+    }
+    L1 = 1.0 - lambda;
+
+    /* Calculate the lambda dependent reference drmsd */
+    drmsd_ref = L1 * ir->drmsd_ref + lambda * ir->drmsd_refB;
+
+    if (append)
+    {
+        fp = gmx_fio_fopen(fn, "a+");
+    }
+    else
+    {
+        fp = gmx_fio_fopen(fn, "w+");
+        print_drmsd_header(fp, oenv, lambda, drmsd_ref, ir->drmsd_fc);
+    }
+    /* Royal flush! */
+    fflush(fp);
+    return fp;
+}
 
 void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
         const t_commrec *cr, gmx_bool bPartDecomp, t_fcdata *fcd,
@@ -113,23 +169,6 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
         {
             fprintf(fplog, "%s\n", notestr);
         }
-
-        if (ir->nstdrmsdpout != 0)
-        {
-            if (fplog)
-            {
-                fprintf(fplog,
-                        "\nWARNING: Can not write distance RMSD restraint data to "
-                                "energy file with domain decomposition\n\n");
-            }
-            if (MASTER(cr))
-            {
-                fprintf(stderr,
-                        "\nWARNING: Can not write distance RMSD restraint data to "
-                                "energy file with domain decomposition\n");
-            }
-            ir->nstdrmsdpout = 0;
-        }
     }
 
     /* Tell the user about drmsd potential setup */
@@ -138,8 +177,8 @@ void init_drmsd_pot(FILE *fplog, const gmx_mtop_t *mtop, t_inputrec *ir,
         fprintf(fplog,
                 "There are %d atom pairs involved in the distance rmsd potential\n",
                 drmsddata->npairs);
+        please_cite(fplog, "Hansdampf2013");
     }
-    please_cite(fplog, "Hansdampf2013");
 }
 
 void calc_drmsd(int nfa, const t_iatom forceatoms[],
@@ -148,28 +187,28 @@ void calc_drmsd(int nfa, const t_iatom forceatoms[],
     atom_id ai, aj;
     int fa, type, N;
     rvec dx;
-    real d, dmdref, dRMSD, L1, dvdlsum;
+    real d, dmdref, drmsd, L1, dvdlsum;
     real dref, drefB, drmsd_ref, drmsd_refB;
     t_drmsdpotdata *drmsdpotdata;
 
     drmsdpotdata = &(fcd->drmsdp);
 
+    N       = drmsdpotdata->npairs;
+    drmsd   = 0.0;
+    dvdlsum = 0.0;
+    fa      = 0;
+
+    L1         = 1.0 - lambda;
+    drmsd_ref  = drmsdpotdata->rmsd_ref;
+    drmsd_refB = drmsdpotdata->rmsd_refB;
+
     /* This check should not be necessary but to prevent things */
-    if (drmsdpotdata->npairs != (int)(nfa/3.0)){
+    if (N != (int)(nfa/3.0)){
         gmx_fatal(FARGS,
                 "Number of distance RMSD pairs differs from expected!\n"
                 "This is most likely a parallelization issue.\n"
                 "Try using OpenMP threads instead of MPI or particle decomposition.\n");
     }
-
-    dRMSD   = 0.0;
-    dvdlsum = 0.0;
-    fa      = 0;
-    N       = drmsdpotdata->npairs;
-
-    L1         = 1.0 - lambda;
-    drmsd_ref  = drmsdpotdata->rmsd_ref;
-    drmsd_refB = drmsdpotdata->rmsd_refB;
 
     while (fa < nfa)
     {
@@ -179,7 +218,7 @@ void calc_drmsd(int nfa, const t_iatom forceatoms[],
         dref  = ip[type].drmsdp.dref;  /* The reference distance of atompair ai, aj */
         drefB = ip[type].drmsdp.drefB; /* The reference distance ai, aj in state B */
 
-        /* Get shortest distance ai,aj with respect to periodic boundary conditions */
+        /* Get shortest distance ai, aj with respect to periodic boundary conditions */
         if (pbc)
         {
             pbc_dx_aiuc(pbc, x[ai], x[aj], dx);
@@ -192,7 +231,7 @@ void calc_drmsd(int nfa, const t_iatom forceatoms[],
         d        = sqrt(iprod(dx, dx));
         dmdref   = sqr(d - L1 * dref - lambda * drefB);
         dvdlsum += (d - L1 * dref - lambda * drefB) * (dref - drefB);
-        dRMSD   += dmdref;
+        drmsd   += dmdref;
 
         /* We could save d to drmsdpotdata here but it is not used further */
         //drmsdpotdata->dt[fa/3] = d;
@@ -200,13 +239,17 @@ void calc_drmsd(int nfa, const t_iatom forceatoms[],
     }
 
     /* Calculate the final distance based RMSD */
-    dRMSD = sqrt(1. / N * dRMSD);
+    drmsd = sqrt(1. / N * drmsd);
 
     /* Calculate dVdl here because it contains a sum over all drmsd atom pairs */
-    drmsdpotdata->dvdl  = drmsdpotdata->fc * (dRMSD - L1 * drmsd_ref - lambda * drmsd_refB );
-    drmsdpotdata->dvdl *= ( dvdlsum / ( N * dRMSD ) + drmsd_ref - drmsd_refB );
+    drmsdpotdata->dvdl  = drmsdpotdata->fc * (drmsd - L1 * drmsd_ref - lambda * drmsd_refB )
+                          * ( dvdlsum / ( N * drmsd ) + drmsd_ref - drmsd_refB );
 
-    drmsdpotdata->rmsd  = dRMSD;
+    /* Calculate drmsd potential here */
+    drmsdpotdata->vpot = N * 0.5 * drmsdpotdata->fc
+                         * sqr(drmsd - L1 * drmsd_ref - lambda * drmsd_refB);
+
+    drmsdpotdata->rmsd  = drmsd;
 }
 
 real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
@@ -234,7 +277,8 @@ real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
     L1 = 1.0 - lambda;
 
     /* Calculate the potential energy */
-    vpair    = 0.5 * fc * sqr(drmsd - L1 * drmsd_ref - lambda * drmsd_refB);
+    //vpair    = 0.5 * fc * sqr(drmsd - L1 * drmsd_ref - lambda * drmsd_refB);
+    vpair    = (drmsdpotdata->vpot) / N;
     dvdlpair = drmsdpotdata->dvdl;
     vtot     = 0;
 
