@@ -4260,6 +4260,9 @@ void calc_bonds_lambda(FILE *fplog,
     const  t_pbc *pbc_null;
     t_idef       idef_fe;
 
+    /* temp buffer for drmsd data */
+    t_drmsdpotdata *drmsdcopy;
+
     if (fr->bMolPBC)
     {
         pbc_null = pbc;
@@ -4281,6 +4284,12 @@ void calc_bonds_lambda(FILE *fplog,
     /* Calculate the drmsd for the foreign lambda value */
     if (idef->il[F_DRMSDP].nr)
     {
+        snew(drmsdcopy, 1);
+        /* backup drmsd data */
+        drmsdcopy->dvdl = fcd->drmsdp.dvdl;
+        drmsdcopy->rmsd = fcd->drmsdp.rmsd;
+        drmsdcopy->vpot = fcd->drmsdp.vpot;
+
         calc_drmsd(idef->il[F_DRMSDP].nr, idef->il[F_DRMSDP].iatoms,
                 idef->iparams, (const rvec*) x, pbc_null, fcd,
                 lambda[efptBONDED]);
@@ -4310,6 +4319,15 @@ void calc_bonds_lambda(FILE *fplog,
                 epot[ftype] += v;
             }
         }
+    }
+
+    /* restore drmsd data */
+    if (idef->il[F_DRMSDP].nr)
+    {
+        fcd->drmsdp.rmsd = drmsdcopy->rmsd;
+        fcd->drmsdp.dvdl = drmsdcopy->dvdl;
+        fcd->drmsdp.vpot = drmsdcopy->vpot;
+        sfree(drmsdcopy);
     }
 
     sfree(fshift);
