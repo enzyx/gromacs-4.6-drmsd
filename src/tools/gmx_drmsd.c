@@ -94,7 +94,7 @@ void read_fid(char* fid, char* fn){
 		char *fid_tmp;
 		snew(fid_tmp,STRLEN);
 		strcpy(fid_tmp,strrchr(fn, '_')+1);
-		sprintf(fid   ,"_%.*s",(int)(strlen(fid_tmp)-4),fid_tmp);
+		sprintf(fid   ,"%.*s",(int)(strlen(fid_tmp)-4),fid_tmp);
 	}
 	else {
 		fid = "";
