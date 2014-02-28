@@ -347,7 +347,10 @@ int gmx_drmsd(int argc, char *argv[])
 		init_drmsd_head(ddat_head[i]);
 
 		snew(file_ids[i],STRLEN);
-		read_fid(file_ids[i],ftrxnms[i]);
+		file_ids[i]="";
+		if (ntrxfile>1) {
+			read_fid(file_ids[i],ftrxnms[i]);
+		}
 
 		read_fileset(i, ftprnms[i], ftrxnms[i], oenv, ddat_head[i]);
 
