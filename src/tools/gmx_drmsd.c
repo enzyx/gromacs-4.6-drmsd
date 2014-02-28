@@ -34,6 +34,8 @@
 #endif
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 #include "sysstuff.h"
 #include "gstat.h"
@@ -86,6 +88,13 @@ void init_drmsd_head(t_drmsd_head *dhead)
 	dhead->lambda = 0;
 }
 
+bool isNumber(char* string)
+{
+    char* p;
+    long converted = strtol(string, &p, 10);
+    return *p == 0;
+}
+
 void read_fid(char* fid, char* fn){
 	/*find file identifier after the last _
 	 * and clear file type (e.g. .xtc) of filename */
@@ -118,6 +127,7 @@ void read_fileset(int set_number, char *ftprnm,
     int             ntopatoms, natoms;
     int             ePBC;
     char 		   *file_id_tpr, *file_id_trx;
+    int			   *_test_trx, *int_test_tpr;
     t_drmsd_data   *ddat;
 
     /* for potential calculation */
@@ -132,10 +142,11 @@ void read_fileset(int set_number, char *ftprnm,
 	snew(file_id_trx,STRLEN);
 	read_fid(file_id_tpr,ftprnm);
 	read_fid(file_id_trx,ftrxnm);
-
-	if (strcmp(file_id_tpr, file_id_trx) != 0){
-        gmx_fatal(FARGS,
-                "input files %s and %s mismatch in run number (%s != %s)\n",ftprnm, ftrxnm,file_id_tpr, file_id_trx);
+	if(isNumber(file_id_trx) && isNumber(file_id_tpr)){
+		if (strcmp(file_id_tpr, file_id_trx) != 0){
+			gmx_fatal(FARGS,
+					"input files %s and %s mismatch in run number (%s != %s)\n",ftprnm, ftrxnm,file_id_tpr, file_id_trx);
+		}
 	}
 
     /* read topology from tpr file */
