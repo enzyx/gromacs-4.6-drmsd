@@ -4280,11 +4280,12 @@ void calc_bonds_lambda(FILE *fplog,
     /* We already have the forces, so we use temp buffers here */
     snew(f, fr->natoms_force);
     snew(fshift, SHIFTS);
+    /* Temp buffer for drmsd data backup */
+    snew(drmsdcopy, 1);
 
     /* Calculate the drmsd for the foreign lambda value */
     if (idef->il[F_DRMSDP].nr)
     {
-        snew(drmsdcopy, 1);
         /* backup drmsd data */
         drmsdcopy->dvdl = fcd->drmsdp.dvdl;
         drmsdcopy->rmsd = fcd->drmsdp.rmsd;
@@ -4327,9 +4328,9 @@ void calc_bonds_lambda(FILE *fplog,
         fcd->drmsdp.rmsd = drmsdcopy->rmsd;
         fcd->drmsdp.dvdl = drmsdcopy->dvdl;
         fcd->drmsdp.vpot = drmsdcopy->vpot;
-        sfree(drmsdcopy);
     }
 
+    sfree(drmsdcopy);
     sfree(fshift);
     sfree(f);
 
