@@ -85,7 +85,7 @@ extern FILE *open_drmsd_out(const char *fn, const t_inputrec *ir,
     }
     L1 = 1.0 - lambda;
 
-    /* Calculate the lambda dependent reference drmsd */
+    /* Calculate the lambda dependend reference drmsd */
     drmsd_ref = L1 * ir->drmsd_ref + lambda * ir->drmsd_refB;
 
     if (append)
@@ -203,7 +203,7 @@ void calc_drmsd(int nfa, const t_iatom forceatoms[],
     drmsd_refB = drmsdpotdata->rmsd_refB;
 
     /* This check should not be necessary but to prevent things */
-    if (N != (int)(nfa/3.0)){
+    if (N != (int)(nfa/DIM)){
         gmx_fatal(FARGS,
                 "Number of distance RMSD pairs differs from expected!\n"
                 "This is most likely a parallelization issue.\n"
@@ -235,7 +235,7 @@ void calc_drmsd(int nfa, const t_iatom forceatoms[],
 
         /* We could save d to drmsdpotdata here but it is not used further */
         //drmsdpotdata->dt[fa/3] = d;
-        fa    += 3;
+        fa    += DIM;
     }
 
     /* Calculate the final distance based RMSD */
@@ -246,7 +246,7 @@ void calc_drmsd(int nfa, const t_iatom forceatoms[],
                           * ( dvdlsum / ( N * drmsd ) + drmsd_ref - drmsd_refB );
 
     /* Calculate drmsd potential here */
-    drmsdpotdata->vpot = N * 0.5 * drmsdpotdata->fc
+    drmsdpotdata->vpot = 0.5 * drmsdpotdata->fc
                          * sqr(drmsd - L1 * drmsd_ref - lambda * drmsd_refB);
 
     drmsdpotdata->rmsd  = drmsd;
@@ -279,14 +279,14 @@ real if_drmsd_pot(int npairs, const t_iatom forceatoms[], const t_iparams ip[],
     /* Calculate the potential energy */
     //vpair    = 0.5 * fc * sqr(drmsd - L1 * drmsd_ref - lambda * drmsd_refB);
     vpair    = (drmsdpotdata->vpot) / N;
-    dvdlpair = drmsdpotdata->dvdl;
+    dvdlpair = drmsdpotdata->dvdl / N;
     vtot     = 0;
 
     /* Calculate force prefactor outside the loop */
     ffc = -fc / N * (drmsd - L1 * drmsd_ref - lambda * drmsd_refB) / drmsd;
 
     /* Loop over drmsd pairs */
-    for (fa = 0; fa < npairs; fa += 3)
+    for (fa = 0; fa < npairs; fa += DIM)
     {
         type  = forceatoms[fa];
         ai    = forceatoms[fa + 1];
